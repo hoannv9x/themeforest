@@ -1,0 +1,29 @@
+<svg id='Hotel_Bedroom_1_24' width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'><rect width='24' height='24' stroke='none' fill='#000000' opacity='0'/>
+
+
+<g transform="matrix(0.83 0 0 0.83 12 12)" >
+<g style="" >
+<g transform="matrix(1 0 0 1 -4.5 5.85)" >
+<path style="stroke: rgb(0,0,0); stroke-width: 1.5; stroke-dasharray: none; stroke-linecap: round; stroke-dashoffset: 0; stroke-linejoin: round; stroke-miterlimit: 4; fill: none; fill-rule: nonzero; opacity: 1;" transform=" translate(-7.5, -17.85)" d="M 5.25 17.849 C 5.25 19.091640687119284 6.257359312880714 20.099 7.5 20.099 C 8.742640687119286 20.099 9.75 19.091640687119284 9.75 17.849 C 9.75 16.606359312880716 8.742640687119286 15.599 7.5 15.599 C 6.257359312880714 15.599 5.25 16.606359312880716 5.25 17.849 Z" stroke-linecap="round" />
+</g>
+<g transform="matrix(1 0 0 1 4.13 5.85)" >
+<path style="stroke: rgb(0,0,0); stroke-width: 1.5; stroke-dasharray: none; stroke-linecap: round; stroke-dashoffset: 0; stroke-linejoin: round; stroke-miterlimit: 4; fill: none; fill-rule: nonzero; opacity: 1;" transform=" translate(-16.13, -17.85)" d="M 12 15.6 L 18.25 15.6 C 18.780432979679087 15.6 19.289140805477025 15.810713680730835 19.664213562373096 16.185786437626906 C 20.039286319269166 16.560859194522976 20.25 17.069567020320914 20.25 17.6 L 20.25 20.1 L 12 20.1 L 12 15.6 Z" stroke-linecap="round" />
+</g>
+<g transform="matrix(1 0 0 1 -4.13 9.6)" >
+<path style="stroke: rgb(0,0,0); stroke-width: 1.5; stroke-dasharray: none; stroke-linecap: round; stroke-dashoffset: 0; stroke-linejoin: round; stroke-miterlimit: 4; fill: none; fill-rule: nonzero; opacity: 1;" transform=" translate(-7.88, -21.6)" d="M 12 20.099 L 3.75 20.099 L 3.75 23.099" stroke-linecap="round" />
+</g>
+<g transform="matrix(1 0 0 1 8.25 9.6)" >
+<path style="stroke: rgb(0,0,0); stroke-width: 1.5; stroke-dasharray: none; stroke-linecap: round; stroke-dashoffset: 0; stroke-linejoin: round; stroke-miterlimit: 4; fill: none; fill-rule: nonzero; opacity: 1;" transform=" translate(-20.25, -21.6)" d="M 20.25 20.099 L 20.25 23.099" stroke-linecap="round" />
+</g>
+<g transform="matrix(1 0 0 1 8.25 -2.65)" >
+<path style="stroke: rgb(0,0,0); stroke-width: 1.5; stroke-dasharray: none; stroke-linecap: round; stroke-dashoffset: 0; stroke-linejoin: round; stroke-miterlimit: 4; fill: none; fill-rule: nonzero; opacity: 1;" transform=" translate(-20.25, -9.35)" d="M 20.25 6.099 L 20.25 12.599" stroke-linecap="round" />
+</g>
+<g transform="matrix(1 0 0 1 -8.25 -2.65)" >
+<path style="stroke: rgb(0,0,0); stroke-width: 1.5; stroke-dasharray: none; stroke-linecap: round; stroke-dashoffset: 0; stroke-linejoin: round; stroke-miterlimit: 4; fill: none; fill-rule: nonzero; opacity: 1;" transform=" translate(-3.75, -9.35)" d="M 3.75 12.599 L 3.75 6.099" stroke-linecap="round" />
+</g>
+<g transform="matrix(1 0 0 1 0 -7.5)" >
+<path style="stroke: rgb(0,0,0); stroke-width: 1.5; stroke-dasharray: none; stroke-linecap: round; stroke-dashoffset: 0; stroke-linejoin: round; stroke-miterlimit: 4; fill: none; fill-rule: nonzero; opacity: 1;" transform=" translate(-12, -4.5)" d="M 0.75 8.1 L 11.168 1.153 C 11.671826048721826 0.8171452928021511 12.328173951278174 0.8171452928021509 12.831999999999999 1.153 L 23.25 8.1" stroke-linecap="round" />
+</g>
+</g>
+</g>
+</svg>

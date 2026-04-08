@@ -1,0 +1,55 @@
+<script setup>
+// ... existing script setup
+
+// Schema.org JSON-LD for Property
+const propertySchema = computed(() => {
+  if (!property.value) return {};
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "SingleFamilyResidence", // Or Apartment, House, etc.
+    "name": property.value.title,
+    "description": property.value.description,
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": property.value.address,
+      "addressLocality": property.value.city.name,
+      "addressRegion": property.value.city.state, // Assuming state is available
+      "addressCountry": property.value.city.country, // Assuming country is available
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": property.value.price,
+      "priceCurrency": property.value.currency,
+      "availability": "https://schema.org/InStock", // Or SoldOut, etc.
+      "seller": {
+        "@type": "RealEstateAgent",
+        "name": property.value.agent?.user.name || "Real Estate Platform",
+        "url": property.value.agent ? `https://yourdomain.com/agents/${property.value.agent.id}` : "https://yourdomain.com/contact",
+      }
+    },
+    "numberOfBedrooms": property.value.bedrooms,
+    "numberOfBathroomsTotal": property.value.bathrooms,
+    "floorSize": {
+      "@type": "QuantitativeValue",
+      "value": property.value.area_sqft,
+      "unitCode": "SQF" // Square Feet
+    },
+    "image": property.value.images.length > 0 ? property.value.images.map(img => img.image_path) : ['/images/og-default-property.jpg'],
+    "url": `https://yourdomain.com/properties/${property.value.id}`,
+    "datePublished": property.value.published_at,
+    "latitude": property.value.latitude,
+    "longitude": property.value.longitude,
+  };
+});
+
+useHead(() => ({
+  // ... existing meta tags
+  script: [
+    {
+      type: 'application/ld+json',
+      children: JSON.stringify(propertySchema.value),
+    },
+  ],
+}));
+</script>

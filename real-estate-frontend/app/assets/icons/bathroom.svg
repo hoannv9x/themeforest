@@ -1,0 +1,17 @@
+<svg id='Travel_Wafinder_Sink_24' width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'><rect width='24' height='24' stroke='none' fill='#000000' opacity='0'/>
+
+
+<g transform="matrix(1.43 0 0 1.43 12 12)" >
+<g style="" >
+<g transform="matrix(1 0 0 1 0 4)" >
+<path style="stroke: rgb(0,0,0); stroke-width: 1; stroke-dasharray: none; stroke-linecap: round; stroke-dashoffset: 0; stroke-linejoin: round; stroke-miterlimit: 4; fill: none; fill-rule: nonzero; opacity: 1;" transform=" translate(-7, -11)" d="M 0.5 8.5 L 13.5 8.5 L 13.5 10.5 C 13.5 12.15685424949238 12.15685424949238 13.5 10.5 13.5 L 3.5 13.5 C 1.8431457505076196 13.5 0.5 12.15685424949238 0.5 10.5 L 0.5 8.5 Z" stroke-linecap="round" />
+</g>
+<g transform="matrix(1 0 0 1 -1.5 -2.5)" >
+<path style="stroke: rgb(0,0,0); stroke-width: 1; stroke-dasharray: none; stroke-linecap: round; stroke-dashoffset: 0; stroke-linejoin: round; stroke-miterlimit: 4; fill: none; fill-rule: nonzero; opacity: 1;" transform=" translate(-5.5, -4.5)" d="M 7.5 2.5 C 7.5 1.395430500338413 6.6045694996615865 0.5 5.5 0.5 C 4.3954305003384135 0.5 3.5 1.3954305003384129 3.5 2.4999999999999996 L 3.5 8.5" stroke-linecap="round" />
+</g>
+<g transform="matrix(1 0 0 1 0.5 -2)" >
+<line style="stroke: rgb(0,0,0); stroke-width: 1; stroke-dasharray: none; stroke-linecap: round; stroke-dashoffset: 0; stroke-linejoin: round; stroke-miterlimit: 4; fill: none; fill-rule: nonzero; opacity: 1;" x1="0" y1="-0.5" x2="0" y2="0.5" />
+</g>
+</g>
+</g>
+</svg>
