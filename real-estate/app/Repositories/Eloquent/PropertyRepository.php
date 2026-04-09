@@ -7,28 +7,20 @@ use App\Repositories\Interfaces\PropertyRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
-class EloquentPropertyRepository implements PropertyRepositoryInterface
+class PropertyRepository implements PropertyRepositoryInterface
 {
     public function all(array $filters = [], array $sortBy = [], int $perPage = 15): LengthAwarePaginator
     {
         $query = Property::query()->with(['city', 'agent', 'images']);
 
-        // Apply filters
-        if (isset($filters['city_id'])) {
-            $query->where('city_id', $filters['city_id']);
-        }
-        if (isset($filters['property_type_id'])) {
-            $query->where('property_type_id', $filters['property_type_id']);
-        }
-        if (isset($filters['min_price'])) {
-            $query->where('price', '>=', $filters['min_price']);
-        }
-        if (isset($filters['max_price'])) {
-            $query->where('price', '<=', $filters['max_price']);
-        }
-        if (isset($filters['status'])) {
-            $query->where('status', $filters['status']);
-        }
+        // Apply filters using when
+        $query->when(isset($filters['city_id']), fn($q) => $q->where('city_id', $filters['city_id']))
+            ->when(isset($filters['property_type_id']), fn($q) => $q->where('property_type_id', $filters['property_type_id']))
+            ->when(isset($filters['district_id']), fn($q) => $q->where('district_id', $filters['district_id']))
+            ->when(isset($filters['min_price']), fn($q) => $q->where('price', '>=', $filters['min_price']))
+            ->when(isset($filters['max_price']), fn($q) => $q->where('price', '<=', $filters['max_price']))
+            ->when(isset($filters['status']), fn($q) => $q->where('status', $filters['status']))
+            ->when(isset($filters['keyword']), fn($q) => $q->where('title', 'like', '%' . $filters['keyword'] . '%'));
 
         // Apply sorting
         if (!empty($sortBy)) {

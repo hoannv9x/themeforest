@@ -8,6 +8,7 @@ use App\Http\Controllers\AdminUploadController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AdminPropertyController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CityController;
 use App\Http\Controllers\Api\PropertyController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\ContactController;
@@ -34,7 +35,8 @@ Route::get('/properties/{slug}', [PropertyController::class, 'show']);
 Route::get('/properties/{slug}/related', [PropertyController::class, 'related']);
 Route::get('/search', [PropertyController::class, 'search']);
 Route::post('/contact', [ContactController::class, 'store']);
-Route::get('/cities', [AdminCityController::class, 'index']);
+Route::get('/cities', [CityController::class, 'index']);
+Route::get('/cities/{city_id}/districts', [CityController::class, 'districts']);
 Route::get('/property-types', [AdminPropertyTypeController::class, 'index']);
 
 // Authenticated routes

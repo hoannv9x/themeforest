@@ -25,7 +25,7 @@ class PropertyController extends Controller
      */
     public function index(Request $request)
     {
-        $filters = $request->only(['city_id', 'property_type_id', 'min_price', 'max_price', 'status']);
+        $filters = $request->except(['sort_by', 'sort_direction', 'per_page']);
         $sortBy = $request->input('sort_by', 'published_at');
         $sortDirection = $request->input('sort_direction', 'desc');
         $perPage = $request->input('per_page', 15);

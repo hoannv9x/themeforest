@@ -22,6 +22,14 @@ class CityResource extends JsonResource
             'country' => $this->country,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
+            'districts' => $this->whenLoaded('districts', function () {
+                return $this->districts->sortBy('name')->map(function ($district) {
+                    return [
+                        'id' => $district->id,
+                        'name' => $district->name,
+                    ];
+                })->values();
+            }),
             'districts_count' => $this->whenCounted('districts'),
             'properties_count' => $this->whenCounted('properties'),
             'created_at' => $this->created_at,
