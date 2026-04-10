@@ -17,13 +17,17 @@ class AgentResource extends JsonResource
         return [
             'id' => $this->id,
             'user' => new UserResource($this->whenLoaded('user')),
-            'agency_name' => $this->agency_name,
+            'title' => $this->agency_name,
             'license_number' => $this->license_number,
             'bio' => $this->bio,
             'website' => $this->website,
+            'phone' => $this->phone,
+            'email' => $this->email,
+            'avatar_url' => $this->avatar_url,
             'properties_count' => $this->whenCounted('properties'),
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'properties' => PropertyResource::collection($this->whenLoaded('properties')),
+            'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
+            'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
         ];
     }
 }

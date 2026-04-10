@@ -22,6 +22,9 @@ class Agent extends Model
         'license_number',
         'bio',
         'website',
+        'phone',
+        'email',
+        'avatar_url',
     ];
 
     // Relationships

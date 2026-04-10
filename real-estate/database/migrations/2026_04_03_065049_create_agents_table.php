@@ -18,6 +18,9 @@ return new class extends Migration
             $table->string('license_number')->unique()->nullable()->comment('Số giấy phép hành nghề duy nhất của đại lý');
             $table->text('bio')->nullable()->comment('Tiểu sử hoặc mô tả về đại lý');
             $table->string('website')->nullable()->comment('Địa chỉ trang web của đại lý hoặc công ty');
+            $table->string('phone')->nullable()->comment('Số điện thoại liên hệ');
+            $table->string('email')->nullable()->comment('Email liên hệ');
+            $table->string('avatar_url')->nullable()->comment('Hình ảnh đại diện của đại lý');
             $table->timestamps();
         });
     }

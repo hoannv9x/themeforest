@@ -1,23 +1,24 @@
 <template>
   <div class="container mx-auto px-4 py-8">
-    <h1 class="text-4xl font-bold text-gray-800 mb-8">Properties for Sale</h1>
-
     <div class="flex flex-col lg:flex-row gap-8">
       <!-- Filter Sidebar -->
       <aside class="lg:w-1/4">
-        <FilterSidebar
-          @apply-filters="handleApplyFilters"
-          @city-change="handleCityChange"
-          :cities="cities"
-          :districts="districts"
-          :propertyTypes="propertyTypes"
-          :filtersDefault="currentFilters"
-        />
-        <!-- Reusable FilterSidebar component -->
+        <div class="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto">
+          <h1 class="text-3xl font-bold text-gray-800 mb-3">Properties for Sale</h1>
+          <FilterSidebar
+            @apply-filters="handleApplyFilters"
+            @city-change="handleCityChange"
+            :cities="cities"
+            :districts="districts"
+            :propertyTypes="propertyTypes"
+            :filtersDefault="currentFilters"
+          />
+          <!-- Reusable FilterSidebar component -->
+        </div>
       </aside>
 
       <!-- Property Listings -->
-      <main class="lg:w-3/4">
+      <main class="lg:w-3/4 mt-6 min-h-[calc(100vh-170px)]">
         <div class="flex justify-between items-center mb-6">
           <p class="text-gray-600">{{ totalProperties }} results found</p>
           <div class="flex items-center space-x-4">
@@ -183,30 +184,27 @@ const handleCityChange = (cityId) => {
 /**
  * Watch for changes in route query parameters (e.g., direct URL changes)
  */
-watch(
-  route.query,
-  () => {
-    currentPage.value = parseInt(route.query.page) || 1;
-    sortBy.value = route.query.sort_by || "published_at_desc";
-    currentFilters.value = {
-      city_id: route.query.city_id,
-      property_type_id: route.query.property_type_id,
-      min_price: route.query.min_price,
-      max_price: route.query.max_price,
-    };
-    fetchProperties();
-  }
-);
+watch(route.query, () => {
+  currentPage.value = parseInt(route.query.page) || 1;
+  sortBy.value = route.query.sort_by || "published_at_desc";
+  currentFilters.value = {
+    city_id: route.query.city_id,
+    property_type_id: route.query.property_type_id,
+    min_price: route.query.min_price,
+    max_price: route.query.max_price,
+  };
+  fetchProperties();
+});
 
 // ========== Lifecycle hooks ==========
 onMounted(() => {
   currentFilters.value = {
     keyword: route.query?.keyword,
-    bedrooms: route.query?.bedrooms,
-    bathrooms: route.query?.bathrooms,
-    property_type: route.query?.property_type,
-    city_id: route.query?.city_id,
-    district_id: route.query?.district_id,
+    bedrooms: route.query?.bedrooms || null,
+    bathrooms: route.query?.bathrooms || null,
+    property_type: route.query?.property_type || null,
+    city_id: route.query?.city_id || null,
+    district_id: route.query?.district_id || null,
   };
   fetchFilterData();
   fetchProperties();

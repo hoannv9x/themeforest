@@ -16,7 +16,7 @@ class RoomHotspotResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'to_room_slug' => $this->toRoom->slug,
+            'to_room_slug' => optional($this->toRoom)->slug,
             'pitch' => $this->pitch !== null ? (float) $this->pitch : null,
             'yaw' => $this->yaw !== null ? (float) $this->yaw : null,
             'text' => $this->text,

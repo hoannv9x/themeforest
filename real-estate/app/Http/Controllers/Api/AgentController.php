@@ -2,17 +2,34 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
+use App\Http\Resources\AgentResource;
 use App\Models\Agent;
 use Illuminate\Http\Request;
+use App\Repositories\Interfaces\AgentRepositoryInterface;
 
 class AgentController extends Controller
 {
+    protected $agentRepository;
+
+    public function __construct(AgentRepositoryInterface $agentRepository)
+    {
+        $this->agentRepository = $agentRepository;
+        $this->middleware('auth:sanctum')->except(['index', 'show', 'search', 'related']);
+    }
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $filters = $request->all();
+        $sortBy = $request->input('sort_by', 'agency_name');
+        $sortDirection = $request->input('sort_direction', 'asc');
+        $perPage = $request->input('per_page', 3);
+        $agents = $this->agentRepository->all($filters, [$sortBy => $sortDirection], $perPage);
+
+        return AgentResource::collection($agents);
     }
 
     /**
@@ -36,7 +53,8 @@ class AgentController extends Controller
      */
     public function show(Agent $agent)
     {
-        //
+        $agent->load(['properties', 'user', 'properties.city']);
+        return new AgentResource($agent);
     }
 
     /**

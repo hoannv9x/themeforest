@@ -113,7 +113,10 @@
       <button @click="apply" class="flex-1 bg-blue-500 text-white py-2 rounded-lg">
         Apply
       </button>
-      <button @click="reset" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400">
+      <button
+        @click="reset"
+        class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400"
+      >
         Reset
       </button>
     </div>
@@ -216,7 +219,7 @@ function reset() {
   minValue.value = 0;
   maxValue.value = 5000000000;
   emit("city-change", null);
-  emit("apply-filters", {});
+  emit("apply-filters", filters);
 }
 </script>
 

@@ -3,7 +3,7 @@
   <div class="flex items-center justify-center gap-2 mt-6">
     <!-- Prev -->
     <button
-      :disabled="page === 1"
+      :disabled="page == 1"
       @click="change(page - 1)"
       class="px-3 py-1 border rounded disabled:opacity-50"
     >
@@ -12,18 +12,18 @@
 
     <!-- Pages -->
     <button
-      v-for="p in totalPages"
+      v-for="p in lastPage"
       :key="p"
       @click="change(p)"
       class="px-3 py-1 border rounded"
-      :class="p === page ? 'bg-blue-500 text-white' : ''"
+      :class="p == page ? 'bg-blue-500 text-white' : ''"
     >
       {{ p }}
     </button>
 
     <!-- Next -->
     <button
-      :disabled="page === totalPages"
+      :disabled="page == lastPage"
       @click="change(page + 1)"
       class="px-3 py-1 border rounded disabled:opacity-50"
     >
@@ -35,15 +35,14 @@
 <script setup>
 const props = defineProps({
   page: Number,
-  total: Number,
-  perPage: { type: Number, default: 10 },
+  lastPage: Number,
 });
 
-const emit = defineEmits(["update:page"]);
+const emit = defineEmits(["page-change"]);
 
 const totalPages = computed(() => Math.ceil(props.total / props.perPage));
 
 const change = (p) => {
-  emit("update:page", p);
+  emit("page-change", p);
 };
 </script>
