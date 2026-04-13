@@ -7,6 +7,7 @@ use App\Models\Favorite;
 use App\Models\Property;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use App\Http\Resources\FavoriteResource;
 
 class FavoriteController extends Controller
 {
@@ -18,7 +19,7 @@ class FavoriteController extends Controller
     public function index(Request $request)
     {
         $favorites = $request->user()->favorites()->with('property')->paginate(15);
-        return response()->json($favorites); // You might want a FavoriteResource here
+        return FavoriteResource::collection($favorites);
     }
 
     public function store(Request $request)
