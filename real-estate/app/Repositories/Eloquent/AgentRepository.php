@@ -33,9 +33,4 @@ class AgentRepository implements AgentRepositoryInterface
 
     return $query->paginate($perPage);
   }
-
-  public function find(int $id): Agent|null
-  {
-    return Agent::find($id);
-  }
 }

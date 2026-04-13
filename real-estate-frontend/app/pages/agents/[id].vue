@@ -3,7 +3,7 @@
     <div v-if="agent" class="bg-white rounded-lg shadow-lg p-6">
       <div class="flex items-center space-x-6 mb-8">
         <img
-          :src="agent.user.profile_picture || defaultAvatar"
+          :src="agent.user.avatar || defaultAvatar"
           alt="Agent Profile"
           class="w-32 h-32 rounded-full object-cover border-4 border-blue-200"
         />
@@ -42,12 +42,19 @@
 
       <section>
         <h2 class="text-2xl font-semibold text-gray-800 mb-4">My Listings</h2>
+        <SkeletonLoading
+          v-if="isLoading"
+          :count="6"
+          :columns="3"
+          :showImage="true"
+          :rows="2"
+        />
         <div
-          v-if="agentListings.length"
+          v-else-if="properties.length"
           class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
         >
           <PropertyCard
-            v-for="property in agentListings"
+            v-for="property in properties"
             :key="property.id"
             :property="property"
           />
@@ -57,21 +64,35 @@
         </div>
       </section>
     </div>
-    <div v-else class="text-center text-gray-600 py-20">Loading agent profile...</div>
+    <div v-if="propertiesMeta && propertiesMeta.last_page > 1" class="mt-12">
+      <Pagination
+        :lastPage="propertiesMeta.last_page"
+        :page="propertiesMeta.current_page"
+        @page-change="handlePageChange"
+      />
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { useRoute, useNuxtApp } from "#app";
-import PropertyCard from "~/components/PropertyCard.vue"; // Will be created in Step 7
+import { computed } from "vue";
+import { useRoute, useRouter, useAsyncData, createError } from "#app";
+import PropertyCard from "~/components/PropertyCard.vue";
+import SkeletonLoading from "~/components/common/SkeletonLoading.vue";
+import Pagination from "~/components/Pagination.vue";
 import defaultAvatar from "~/assets/images/default-avatar.jpg";
 
-const config = useRuntimeConfig();
-const { $api } = useNuxtApp();
 const route = useRoute();
+const router = useRouter();
+const api = useApi();
+const config = useRuntimeConfig();
 
-// Use useAsyncData for SSR support and better data fetching lifecycle
+const agentId = route.params.id;
+const currentPage = computed(() => parseInt(route.query.page) || 1);
+const propertiesMeta = ref([]);
+const properties = ref([]);
+const isLoading = ref(true);
+
 const { data: agentData, error: apiError } = await useAsyncData(
   `agent-${route.params.id}`,
   async () => {
@@ -94,34 +115,55 @@ const { data: agentData, error: apiError } = await useAsyncData(
   }
 );
 
-if (apiError.value) {
-  console.error("📉 AsyncData Error:", apiError.value);
+async function getAgentProperties() {
+  isLoading.value = true;
+  try {
+    const { data } = await api.getProperties({
+      agent_id: agentId,
+      page: currentPage.value,
+      per_page: 6,
+    });
+    properties.value = data.data;
+    propertiesMeta.value = data.meta;
+  } catch (error) {
+    console.error("❌ API call failed:", error.message);
+    if (error.response) {
+      console.error("Data:", error.response.data);
+      console.error("Status:", error.response.status);
+    }
+    throw createError("❌ Failed to fetch properties:", error.message);
+  } finally {
+    isLoading.value = false;
+  }
 }
 
-const agent = computed(() => {
-  const data = agentData.value?.data || agentData.value;
-  return data;
+onMounted(() => {
+  getAgentProperties();
 });
 
-const agentListings = computed(() => agent.value?.properties || []);
+// Watch for route changes to re-fetch properties (e.g., clicking a related property)
+watch(() => route.query.page, getAgentProperties);
 
-// useHead will automatically update when 'agent' (computed) changes
-useHead(() => {
-  const agentName = agent.value?.user?.name || "Agent";
-  const agencyName = agent.value?.agency_name || agent.value?.title || "Agent";
+// Computed properties to safely access nested data
+const agent = computed(() => agentData.value);
 
-  return {
-    title: `${agentName}'s Profile - Real Estate Agent`,
-    meta: [
-      {
-        name: "description",
-        content: `View ${agentName}'s profile and listings from ${agencyName}.`,
-      },
-      {
-        property: "og:title",
-        content: `${agentName}'s Profile - Real Estate Agent`,
-      },
-    ],
-  };
-});
+// Handle pagination change
+const handlePageChange = (newPage) => {
+  router.push({ query: { page: newPage } });
+};
+
+// SEO Head
+useHead(() => ({
+  title: agent.value ? `${agent.value.title} - Real Estate Agent` : "Agent Profile",
+  meta: [
+    {
+      name: "description",
+      content: agent.value
+        ? `View profile and listings for ${
+            agent.value.name
+          }. ${agent.value.bio?.substring(0, 150)}`
+        : "Find the best real estate agents.",
+    },
+  ],
+}));
 </script>

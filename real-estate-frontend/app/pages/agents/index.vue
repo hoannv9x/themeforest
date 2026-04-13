@@ -73,9 +73,6 @@ const fetchAgents = async (page = 1) => {
 };
 
 const handlePageChange = (newPage) => {
-  // Update URL without reloading the page
-  console.log(newPage);
-
   const router = useRouter();
   router.push({ query: { page: newPage } });
 };

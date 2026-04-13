@@ -20,6 +20,7 @@ class PropertyRepository implements PropertyRepositoryInterface
             ->when(isset($filters['min_price']), fn($q) => $q->where('price', '>=', $filters['min_price']))
             ->when(isset($filters['max_price']), fn($q) => $q->where('price', '<=', $filters['max_price']))
             ->when(isset($filters['status']), fn($q) => $q->where('status', $filters['status']))
+            ->when(isset($filters['agent_id']), fn($q) => $q->where('agent_id', $filters['agent_id']))
             ->when(isset($filters['keyword']), fn($q) => $q->where('title', 'like', '%' . $filters['keyword'] . '%'));
 
         // Apply sorting

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AgentResource;
+use App\Http\Resources\PropertyResource;
 use App\Models\Agent;
 use Illuminate\Http\Request;
 use App\Repositories\Interfaces\AgentRepositoryInterface;
@@ -55,29 +56,5 @@ class AgentController extends Controller
     {
         $agent->load(['properties', 'user', 'properties.city']);
         return new AgentResource($agent);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Agent $agent)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Agent $agent)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Agent $agent)
-    {
-        //
     }
 }

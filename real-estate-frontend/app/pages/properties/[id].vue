@@ -144,52 +144,6 @@ import iconBathroom from "~/assets/icons/bathroom.svg";
 import iconBedroom from "~/assets/icons/bedroom.svg";
 import iconArea from "~/assets/icons/area.svg";
 
-const propertySchema = computed(() => {
-  if (!property.value) return {};
-
-  return {
-    "@context": "https://schema.org",
-    "@type": "SingleFamilyResidence", // Or Apartment, House, etc.
-    name: property.value.title,
-    description: property.value.description,
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: property.value.address,
-      addressLocality: property.value.city.name,
-      addressRegion: property.value.city.state, // Assuming state is available
-      addressCountry: property.value.city.country, // Assuming country is available
-    },
-    offers: {
-      "@type": "Offer",
-      price: property.value.price,
-      priceCurrency: property.value.currency,
-      availability: "https://schema.org/InStock", // Or SoldOut, etc.
-      seller: {
-        "@type": "RealEstateAgent",
-        name: property.value.agent?.user.name || "Real Estate Platform",
-        url: property.value.agent
-          ? `https://yourdomain.com/agents/${property.value.agent.id}`
-          : "https://yourdomain.com/contact",
-      },
-    },
-    numberOfBedrooms: property.value.bedrooms,
-    numberOfBathroomsTotal: property.value.bathrooms,
-    floorSize: {
-      "@type": "QuantitativeValue",
-      value: property.value.area_sqft,
-      unitCode: "SQF", // Square Feet
-    },
-    image:
-      property.value.images.length > 0
-        ? property.value.images.map((img) => img.image_path)
-        : defaultProperty,
-    url: `https://yourdomain.com/properties/${property.value.id}`,
-    datePublished: property.value.published_at,
-    latitude: property.value.latitude,
-    longitude: property.value.longitude,
-  };
-});
-
 const { $api } = useNuxtApp();
 const route = useRoute();
 const property = ref(null);
