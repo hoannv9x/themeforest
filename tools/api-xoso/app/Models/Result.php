@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Result extends Model
 {
     use HasFactory;
-    protected $fillable = ['date', 'region', 'province_code', 'raw_data'];
+    protected $fillable = ['date', 'region', 'province_code', 'raw_data', 'created_at'];
 
     public $timestamps = false;
 

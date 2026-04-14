@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->bigInteger('result_id');
             $table->char('number', 10);
+            $table->char('raw_number', 10);
             $table->string('prize')->comment('Giải (db, g1, g2, ...)');
         });
     }

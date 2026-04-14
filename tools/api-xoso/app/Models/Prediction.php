@@ -9,9 +9,7 @@ class Prediction extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['date', 'numbers', 'meta', 'algorithm', 'accuracy', 'region'];
-
-    public $timestamps = false;
+    protected $fillable = ['date', 'numbers', 'meta', 'algorithm', 'accuracy', 'region', 'created_at', 'updated_at'];
 
     protected $casts = [
         'numbers' => 'array',

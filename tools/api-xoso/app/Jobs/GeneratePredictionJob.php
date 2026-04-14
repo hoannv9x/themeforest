@@ -34,7 +34,10 @@ class GeneratePredictionJob implements ShouldQueue
             [
                 'numbers' => $data['numbers'],
                 'meta' => $data['meta'],
-                'algorithm' => 'weighted_v2'
+                'algorithm' => 'weighted_v2',
+                'created_at' => now(),
+                'updated_at' => now(),
+                'accuracy' => $data['accuracy'] ?? 1,
             ]
         );
     }

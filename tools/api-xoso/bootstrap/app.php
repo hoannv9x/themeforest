@@ -17,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule) {
         $schedule->job(new CrawlResultJob)->daily('18:35');
         $schedule->job(new UpdateStatsJob)->daily('19:00');
-        $schedule->job(new GeneratePredictionJob)->daily('19:05');
+        $schedule->job(new GeneratePredictionJob)->daily('00:00');
     })
     ->withMiddleware(function (Middleware $middleware) {
         //

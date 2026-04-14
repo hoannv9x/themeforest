@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('number_stats', function (Blueprint $table) {
             $table->id();
             $table->char('number', 10);
-            $table->string('total_count')->comment('Số lần xuất hiện');
-            $table->date('last_appeared_at')->comment('Ngày cuối cùng xuất hiện');
-            $table->integer('current_gap')->comment('Khoảng cách hiện tại');
+            $table->string('total_count')->comment('Số lần xuất hiện')->default(0);
+            $table->date('last_appeared_at')->comment('Ngày cuối cùng xuất hiện')->nullable();
+            $table->integer('current_gap')->comment('Khoảng cách hiện tại')->default(0);
             $table->boolean('never_hit')->default(false);
             $table->timestamp('updated_at');
         });
