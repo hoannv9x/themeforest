@@ -14,7 +14,7 @@ class Result extends Model
 
     protected $casts = [
         'raw_data' => 'array',
-        'date' => 'date'
+        'date' => 'date:Y-m-d'
     ];
 
     public function numbers()

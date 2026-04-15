@@ -1,5 +1,6 @@
 <script setup>
 const stats = ref([]);
+const predictions = ref([]);
 const loading = ref(true);
 const api = useApi();
 
@@ -7,6 +8,8 @@ onMounted(async () => {
   try {
     const data = await api.getStats();
     stats.value = data.data;
+    const predictionsData = await api.getPredictions();
+    predictions.value = predictionsData.data;
   } catch (e) {
     console.log(e);
   } finally {
@@ -50,12 +53,11 @@ onMounted(async () => {
 
       <div v-else class="flex justify-center flex-wrap gap-2">
         <div
-          v-for="item in stats.slice(0, 50)"
-          :key="item.number"
-          class="p-3 text-center rounded-lg font-semibold"
-          :class="item.current_gap > 5 ? 'bg-red-500 text-white' : 'bg-gray-200'"
+          v-for="item in predictions?.numbers || []"
+          :key="item?.numbers"
+          class="bg-red-500 text-white px-4 py-3 rounded-lg font-bold text-center"
         >
-          {{ item.number }}
+          <div class="text-lg">{{ item.number }}</div>
         </div>
       </div>
     </section>

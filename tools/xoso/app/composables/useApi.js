@@ -11,5 +11,7 @@ export const useApi = () => {
     getStats: () => $api.get('/v1/stats'),
 
     getPredictions: () => $api.get('/v1/predictions'),
+
+    getResults: (params) => $api.get('/v1/results', { params }),
   };
 };

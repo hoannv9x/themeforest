@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\CrawlLog;
 use App\Models\Result;
 use App\Models\Number;
 use Exception;
@@ -35,10 +36,11 @@ class CrawlResultJob implements ShouldQueue
     {
         $regions = Number::REGIONS;
         $baseUrl = 'https://xosoapi.online';
-        try {
-            foreach ($regions as $region) {
+        $apiKey = env('API_KEY_XOSO');
+        $url = '';
+        foreach ($regions as $region) {
+            try {
                 $regionCode = $region;
-                $apiKey = env('API_KEY_XOSO');
                 $ch = curl_init();
                 $url = "$baseUrl/api/v1/vietnam/draws?region=$regionCode";
                 if ($this->date !== null) {
@@ -59,15 +61,41 @@ class CrawlResultJob implements ShouldQueue
                 curl_close($ch);
                 $payload = json_decode($response, true);
 
+                if (empty($payload)) {
+                    CrawlLog::create([
+                        'source' => $url,
+                        'status' => 'failed',
+                        'message' => 'API trả về dữ liệu trống',
+                        'created_at' => now(),
+                    ]);
+                    continue;
+                }
+
                 if (!$payload['success']) {
-                    throw new Exception('API trả về thất bại');
+                    CrawlLog::create([
+                        'source' => $url,
+                        'status' => 'failed',
+                        'message' => 'API trả về thất bại',
+                        'created_at' => now(),
+                    ]);
+                    continue;
+                }
+
+                if (empty($payload['data'])) {
+                    CrawlLog::create([
+                        'source' => $url,
+                        'status' => 'failed',
+                        'message' => 'Data trống',
+                        'created_at' => now(),
+                    ]);
+                    continue;
                 }
 
                 DB::beginTransaction();
-
+                Log::info("Crawl $regionCode {$this->date}: ", $payload['data']);
                 foreach ($payload['data'] as $draw) {
-                    $date = Carbon::parse($draw['date'])->format('Y-m-d');
-
+                    $date = Carbon::createFromFormat('d/m/Y', $draw['formatted_date'])
+                        ->format('Y-m-d');
                     $province = $draw['province'];
 
                     $provinceCode = $province['code'];
@@ -77,9 +105,11 @@ class CrawlResultJob implements ShouldQueue
                     // ❗ chống duplicate theo date + province
                     $exists = Result::where('date', $date)
                         ->where('province_code', $provinceCode)
+                        ->where('region', $regionCode)
                         ->exists();
 
                     if ($exists) {
+                        Log::info("Duplicate $date $provinceCode $regionCode {$this->date}");
                         continue;
                     }
 
@@ -92,6 +122,8 @@ class CrawlResultJob implements ShouldQueue
                         'raw_data' => $draw['prizes'],
                         'created_at' => now(),
                     ]);
+
+                    Log::info("Crawl: ", ['result' => $result]);
 
                     // 🔢 parse numbers
                     $numbers = [];
@@ -111,14 +143,18 @@ class CrawlResultJob implements ShouldQueue
                     // ⚡ insert batch
                     Number::insert($numbers);
                 }
+
+                DB::commit();
+            } catch (Throwable $e) {
+                DB::rollBack();
+                CrawlLog::create([
+                    'source' => $url,
+                    'status' => 'failed',
+                    'message' => $e->getMessage(),
+                    'created_at' => now(),
+                ]);
+                throw $e;
             }
-
-            DB::commit();
-        } catch (Throwable $e) {
-
-            DB::rollBack();
-
-            Log::error('CrawlResultJob error: ' . $e->getMessage());
         }
     }
 }

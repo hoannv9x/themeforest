@@ -4,21 +4,20 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Result;
+use App\Services\ResultService;
 use Illuminate\Http\Request;
 
 class ResultController extends Controller
 {
-    public function index(Request $request)
+    protected $resultService;
+
+    public function __construct(ResultService $resultService)
     {
-        return Result::query()
-            ->when($request->date, fn($q) => $q->whereDate('date', $request->date))
-            ->when($request->region, fn($q) => $q->where('region', $request->region))
-            ->latest()
-            ->paginate(20);
+        $this->resultService = $resultService;
     }
 
-    public function show(Request $request, string $date)
+    public function index(Request $request)
     {
-        return $this->success();
+        return $this->resultService->index($request);
     }
 }
