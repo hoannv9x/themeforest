@@ -19,8 +19,7 @@ class NumberStat extends Model
         'total_count_180_days',
         'total_count_365_days',
         'last_appeared_at',
-        'updated_at',
-        'never_hit'
+        'updated_at'
     ];
     public $timestamps = false;
 }

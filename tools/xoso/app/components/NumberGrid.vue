@@ -57,8 +57,7 @@ const numbers = computed(() => {
       map.value[num] || {
         number: num,
         current_gap: 0,
-        total_count: 0,
-        never_hit: true,
+        total_count: 0
       }
     );
   }
@@ -67,10 +66,7 @@ const numbers = computed(() => {
 });
 
 const getColor = (item) => {
-  if (item.number == "10") {
-    console.log(item);
-  }
-  if (item.never_hit || item.total_count == 0) return "bg-yellow-400 text-black";
+  if (item.total_count == 0 || item.current_gap < 0) return "bg-yellow-400 text-black";
 
   if (item.current_gap > 10) return "bg-red-600 text-white";
   if (item.current_gap > 5) return "bg-red-400 text-white";

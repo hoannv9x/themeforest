@@ -60,7 +60,6 @@ class UpdateStatsJob implements ShouldQueue
                         ->first();
 
                     $lastDate = $last ? $last->date : null;
-                    $neverHit = 0;
                     // 🔥 current_gap
                     if ($lastDate) {
                         $currentGap = $lastDate
