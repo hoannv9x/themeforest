@@ -13,5 +13,8 @@ export const useApi = () => {
     getPredictions: () => $api.get('/v1/predictions'),
 
     getResults: (params) => $api.get('/v1/results', { params }),
+
+    getMostFrequentNumbers: (params) => $api.get('/v1/number/most-frequent', { params }),
+
   };
 };

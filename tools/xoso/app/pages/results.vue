@@ -23,6 +23,7 @@
       <XsTable :xsmb="xsmb" title="Xổ số Miền Bắc" />
     </div>
 
+
     <!-- XSMN -->
     <div v-if="activeTab == 'xsmn'" class="bg-white rounded shadow p-4">
       <XsTable :xsmb="xsmn" title="Xổ số Miền Nam" />
@@ -40,8 +41,8 @@ const activeTab = ref("xsmb");
 const api = useApi();
 const tabs = [
   { key: "xsmb", label: "XSMB" },
-  { key: "xsmn", label: "XSMN" },
-  { key: "xsmt", label: "XSMT" },
+  // { key: "xsmn", label: "XSMN" },
+  // { key: "xsmt", label: "XSMT" },
 ];
 
 /**
@@ -49,17 +50,9 @@ const tabs = [
  */
 const xsmb = ref([]);
 
-const xsmn = ref({
-  provinces: ["TP.HCM", "Cần Thơ", "Đồng Nai"],
-  db: ["123456", "654321", "999999"],
-  g1: ["11111", "22222", "33333"],
-});
+const xsmn = ref([]);
 
-const xsmt = ref({
-  provinces: ["Đà Nẵng", "Huế"],
-  db: ["888888", "777777"],
-  g1: ["12345", "54321"],
-});
+const xsmt = ref([]);
 
 async function getResult() {
   try {

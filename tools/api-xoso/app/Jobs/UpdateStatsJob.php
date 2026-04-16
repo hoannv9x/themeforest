@@ -21,23 +21,23 @@ class UpdateStatsJob implements ShouldQueue
 
     public function handle()
     {
-        try {
-
-            DB::beginTransaction();
-            $regions = Number::REGIONS;
-
-            foreach ($regions as $key => $region) {
-
+        $regions = Number::REGIONS;
+        $days = [7, 30, 90, 180, 365];
+        foreach ($regions as $key => $region) {
+            try {
+                DB::beginTransaction();
                 // 🗓 lấy tất cả ngày (unique)
                 $latestDate = Number::join('results', 'numbers.result_id', '=', 'results.id')
                     ->where('results.region', $region)
                     ->max('results.date');
 
                 // Calculate the date 90 days ago from the latest date
-                $cutoffDate = Carbon::parse($latestDate)->subDays(90);
+                // $cutoffDate = Carbon::parse($latestDate)->subDays(90)->format('Y-m-d');
+                $cutoffDate = '2025-01-01';
 
                 // 🔢 loop từ 00 → 99
                 for ($i = 0; $i <= 99; $i++) {
+                    $totalCountByDays = [];
 
                     $num = str_pad($i, 2, '0', STR_PAD_LEFT);
 
@@ -48,7 +48,6 @@ class UpdateStatsJob implements ShouldQueue
                             $query->where('date', '>=', $cutoffDate);
                         })
                         ->count();
-
                     // 📅 last appeared within last 90 days
                     $last = Number::query()
                         ->join('results', 'results.id', '=', 'numbers.result_id')
@@ -68,20 +67,32 @@ class UpdateStatsJob implements ShouldQueue
                             ? Carbon::parse($lastDate)->diffInDays($latestDate)
                             : null;
                     } else {
-                        $currentGap = 999;
-                        $neverHit = 1; // chưa từng ra
+                        $currentGap = -1;
+                    }
+
+                    foreach ($days as $key => $value) {
+                        $cutoffDate = Carbon::parse($latestDate)->subDays($value)->format('Y-m-d');
+                        $totalCountByDays[$value] = Number::where('number', $num)
+                        ->whereNotIn('prize', ['ma_db', 'db'])
+                        ->whereHas('result', function ($query) use ($cutoffDate) {
+                            $query->where('date', '>=', $cutoffDate);
+                        })
+                        ->count();
                     }
 
                     // 💾 update / insert
                     NumberStat::updateOrCreate(
-                        ['number' => $num],
+                        ['number' => $num, 'region' => $region],
                         [
                             'total_count' => $totalCount,
+                            'total_count_7_days' => $totalCountByDays[7] ?? 0,
+                            'total_count_30_days' => $totalCountByDays[30] ?? 0,
+                            'total_count_90_days' => $totalCountByDays[90] ?? 0,
+                            'total_count_180_days' => $totalCountByDays[180] ?? 0,
+                            'total_count_365_days' => $totalCountByDays[365] ?? 0,
                             'last_appeared_at' => $lastDate,
                             'current_gap' => $currentGap ?? 0,
-                            'never_hit' => $neverHit,
-                            'updated_at' => now(),
-                            'last_appeared_at' => $lastDate,
+                            'updated_at' => now()
                         ]
                     );
                 }
@@ -105,14 +116,11 @@ class UpdateStatsJob implements ShouldQueue
                         $predictionToday->save();
                     }
                 }
+                DB::commit();
+            } catch (Throwable $e) {
+                DB::rollBack();
+                Log::error('UpdateStatsJob error region: ' . $region . ': ' . $e);
             }
-
-            DB::commit();
-        } catch (Throwable $e) {
-
-            DB::rollBack();
-
-            Log::error('UpdateStatsJob error: ' . $e);
         }
     }
 }

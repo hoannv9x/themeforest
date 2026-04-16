@@ -18,7 +18,7 @@ class StatsService
       $last = $items->sortByDesc('created_at')->first();
 
       NumberStat::updateOrCreate(
-        ['number' => $number],
+        ['number' => $number, 'region' => $items->first()->region],
         [
           'total_count' => $items->count(),
           'last_appeared_at' => $last->created_at,

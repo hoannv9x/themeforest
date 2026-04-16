@@ -14,7 +14,8 @@ class ResultService
     $query = Result::query();
 
     if ($request->is_multi_region) {
-      return $query->whereIn('region', Number::REGIONS)
+      return $query->with('numbers')
+        ->whereIn('region', Number::REGIONS)
         ->where('date', '>=', Carbon::now()->subDays(5)->format('Y-m-d'))
         ->orderBy('date', 'desc')
         ->get(['region', 'date', 'raw_data'])

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\NumberStatController;
 use App\Http\Controllers\Api\PredictionController;
 use App\Http\Controllers\Api\ResultController;
 use App\Http\Controllers\Api\StatsController;
@@ -12,6 +13,7 @@ Route::prefix('v1')->group(function () {
 
     Route::get('/stats', [StatsController::class, 'index']);
     Route::get('/stats/{number}', [StatsController::class, 'detail']);
+    Route::get('/number/most-frequent', [NumberStatController::class, 'index']);
 
     Route::get('/predictions', [PredictionController::class, 'today']);
 

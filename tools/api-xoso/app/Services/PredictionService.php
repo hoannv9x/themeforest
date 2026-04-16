@@ -2,10 +2,77 @@
 
 namespace App\Services;
 
+use App\Models\Number;
 use App\Models\NumberStat;
+use App\Models\Prediction;
 
 class PredictionService
 {
+  public function getGan($region)
+  {
+    return NumberStat::orderByDesc('current_gap')
+      ->take(10)
+      ->get()
+      ->map(fn($n) => [
+        'number' => $n->number,
+        'score' => $n->current_gap
+      ]);
+  }
+
+  public function getTrend($region)
+  {
+    return Number::selectRaw('numbers.number, COUNT(numbers.id) as total')
+      ->join('results', 'results.id', '=', 'numbers.result_id')
+      ->where('results.date', '>=', now()->subDays(7))
+      ->where('results.region', $region)
+      ->groupBy('numbers.number')
+      ->orderByDesc('total')
+      ->limit(10)
+      ->get()
+      ->map(fn($n) => [
+        'number' => $n->numbers_number,
+        'score' => $n->total
+      ]);
+  }
+
+  public function getRoi()
+  {
+    $yesterday = Number::join('results', 'results.id', '=', 'numbers.result_id')
+      ->where('results.date', '>=', now()->subDay())
+      ->pluck('numbers.number');
+
+    $today = Number::join('results', 'results.id', '=', 'numbers.result_id')
+      ->where('results.date', '>=', now())
+      ->pluck('numbers.number');
+
+    return $today->intersect($yesterday)
+      ->map(fn($n) => [
+        'number' => $n,
+        'score' => 1
+      ]);
+  }
+
+  public function getAI()
+  {
+    $stats = NumberStat::all();
+
+    $maxGap = $stats->max('current_gap');
+    $maxCount = $stats->max('total_count');
+
+    return $stats->map(function ($n) use ($maxGap, $maxCount) {
+
+      $gapScore = $maxGap ? $n->current_gap / $maxGap : 0;
+      $countScore = $maxCount ? $n->total_count / $maxCount : 0;
+
+      $score = ($gapScore * 0.7) + ($countScore * 0.3);
+
+      return [
+        'number' => $n->number,
+        'score' => round($score * 100)
+      ];
+    })->sortByDesc('score')->take(10)->values();
+  }
+
   public function generate(): array
   {
     $stats = NumberStat::all();
@@ -65,5 +132,38 @@ class PredictionService
   {
     if ($max == $min) return 0;
     return ($value - $min) / ($max - $min) ?? 0;
+  }
+
+  function getPrediction($region): array
+  {
+    $predictions = Prediction::where('region', $region)
+      ->where('date', now()->toDateString())
+      ->get()
+      ->keyBy('algorithm')
+      ->toArray();
+
+    return $predictions;
+  }
+
+  function getPredictionPro($region): array
+  {
+    $predictions = $this->getPrediction($region);
+    $numberCounts = [];
+
+    foreach ($predictions as $algo => $value) {
+      foreach ($value['numbers'] as $data) {
+        $num = $data['number'] ?? null;
+        if ($num !== null) {
+          $numberCounts[$num] = ($numberCounts[$num] ?? 0) + 1;
+        }
+      }
+    }
+    arsort($numberCounts);
+    $topNumbers = array_slice($numberCounts, 0, 5, true);
+
+    return [
+      'predictions' => $predictions,
+      'top_numbers' => $topNumbers
+    ];
   }
 }

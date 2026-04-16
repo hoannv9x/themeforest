@@ -39,6 +39,9 @@ class CrawlResultJob implements ShouldQueue
         $apiKey = env('API_KEY_XOSO');
         $url = '';
         foreach ($regions as $region) {
+            if ($region != Number::REGION_MB) {
+                continue;
+            }
             try {
                 $regionCode = $region;
                 $ch = curl_init();
