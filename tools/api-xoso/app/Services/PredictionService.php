@@ -5,6 +5,10 @@ namespace App\Services;
 use App\Models\Number;
 use App\Models\NumberStat;
 use App\Models\Prediction;
+use App\Models\Result;
+use Carbon\Carbon;
+
+use function PHPUnit\Framework\isNumeric;
 
 class PredictionService
 {
@@ -35,26 +39,51 @@ class PredictionService
       ]);
   }
 
-  public function getRoi()
+  public function getRoi($region)
   {
-    $yesterday = Number::join('results', 'results.id', '=', 'numbers.result_id')
-      ->where('results.date', '>=', now()->subDay())
-      ->pluck('numbers.number');
+    $results = Result::where('region', $region)
+      ->orderBy('date', 'desc')
+      ->take(30)
+      ->get();
 
-    $today = Number::join('results', 'results.id', '=', 'numbers.result_id')
-      ->where('results.date', '>=', now())
-      ->pluck('numbers.number');
+    $roiStats = [];
 
-    return $today->intersect($yesterday)
-      ->map(fn($n) => [
+    for ($i = 0; $i < count($results) - 1; $i++) {
+
+      $today = Number::where('result_id', $results[$i]->id)->pluck('number');
+      $yesterday = Number::where('result_id', $results[$i + 1]->id)->pluck('number');
+
+      $roi = $today->intersect($yesterday);
+
+      foreach ($roi as $n) {
+        if (!is_numeric($n)) {
+          continue;
+        }
+        $roiStats[$n] = ($roiStats[$n] ?? 0) + 1;
+      }
+    }
+
+    $latestResult = $results->first();
+
+    $candidates = Number::where('result_id', $latestResult->id)
+      ->pluck('number')
+      ->unique();
+
+    // 🎯 Combine candidate + score
+    return $candidates->map(function ($n) use ($roiStats) {
+      return [
         'number' => $n,
-        'score' => 1
-      ]);
+        'score' => ($roiStats[$n] ?? 0) * 10
+      ];
+    })
+      ->sortByDesc('score')
+      ->take(10)
+      ->values();
   }
 
-  public function getAI()
+  public function getAI($region)
   {
-    $stats = NumberStat::all();
+    $stats = NumberStat::where('region', $region)->get();
 
     $maxGap = $stats->max('current_gap');
     $maxCount = $stats->max('total_count');

@@ -72,11 +72,11 @@ class UpdateStatsJob implements ShouldQueue
                     foreach ($days as $key => $value) {
                         $cutoffDate = Carbon::parse($latestDate)->subDays($value)->format('Y-m-d');
                         $totalCountByDays[$value] = Number::where('number', $num)
-                        ->whereNotIn('prize', ['ma_db', 'db'])
-                        ->whereHas('result', function ($query) use ($cutoffDate) {
-                            $query->where('date', '>=', $cutoffDate);
-                        })
-                        ->count();
+                            ->whereNotIn('prize', ['ma_db', 'db'])
+                            ->whereHas('result', function ($query) use ($cutoffDate) {
+                                $query->where('date', '>=', $cutoffDate);
+                            })
+                            ->count();
                     }
 
                     // 💾 update / insert
@@ -105,14 +105,16 @@ class UpdateStatsJob implements ShouldQueue
                         ->get()->toArray();
 
                     $numberYesterday = array_column($numberYesterday, 'number');
-                    $today = Carbon::parse($latestDate)->addDay()->toDateString();
-                    $predictionToday = Prediction::where('date', $today)->first();
-                    if ($predictionToday) {
-                        $numberPrediction = array_column($predictionToday->numbers, 'number');
-                        $count = count(array_intersect($numberPrediction, $numberYesterday));
+                    $today = Carbon::parse($latestDate)->toDateString();
+                    $predictionToday = Prediction::where('date', $today)->where('region', $region)->get();
+                    foreach ($predictionToday as $key => $value) {
+                        $numberPrediction = array_column($value->numbers, 'number');
+                        if (!empty($numberPrediction)) {
+                            $count = count(array_intersect($numberPrediction, $numberYesterday));
 
-                        $predictionToday->accuracy = $count / count($numberPrediction);
-                        $predictionToday->save();
+                            $value->accuracy = $count / count($numberPrediction);
+                            $value->save();
+                        }
                     }
                 }
                 DB::commit();
