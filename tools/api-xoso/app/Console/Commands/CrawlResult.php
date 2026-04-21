@@ -12,7 +12,7 @@ class CrawlResult extends Command
      *
      * @var string
      */
-    protected $signature = 'app:crawl-result {date?} {--page=1}';
+    protected $signature = 'app:crawl-result {date?} {--page=1} {--limit=1}';
 
     /**
      * The console command description.
@@ -28,7 +28,8 @@ class CrawlResult extends Command
     {
         $date = $this->argument('date');
         $page = $this->option('page');
-        $this->info("Crawl result for date: $date, page: $page");
-        dispatch(new CrawlResultJob($date, $page))->onQueue('crawl-result');
+        $limit = $this->option('limit');
+        $this->info("Crawl result for date: $date, page: $page, limit: $limit");
+        dispatch(new CrawlResultJob($date, $page, $limit))->onQueue('crawl-result');
     }
 }

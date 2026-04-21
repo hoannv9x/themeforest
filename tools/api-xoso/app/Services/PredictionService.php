@@ -23,6 +23,15 @@ class PredictionService
       ]);
   }
 
+  public function getVip($region = Number::REGION_MB)
+  {
+    $stats = NumberStat::where('region', $region)->get();
+
+    $ranking = app(ScoreService::class)->rank($stats);
+
+    return $ranking->take(10);
+  }
+
   public function getTrend($region)
   {
     return Number::selectRaw('numbers.number, COUNT(numbers.id) as total')

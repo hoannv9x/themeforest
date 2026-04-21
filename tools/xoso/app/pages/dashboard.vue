@@ -9,7 +9,7 @@ const paramNumberMost = ref({
 
 onMounted(async () => {
   const data = await api.getStats();
-  stats.value = data.data;
+  stats.value = data.data.filter((i) => i.region == 'mb');
   
   const numberData = await api.getMostFrequentNumbers(paramNumberMost.value);
   numbersMost.value = numberData.data;

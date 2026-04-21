@@ -53,11 +53,11 @@ onMounted(async () => {
 
       <div v-else class="flex justify-center flex-wrap gap-2">
         <div
-          v-for="item in predictions?.numbers || []"
-          :key="item?.numbers"
+          v-for="(item, idx) in predictions?.top_numbers || []"
+          :key="idx"
           class="bg-red-500 text-white px-4 py-3 rounded-lg font-bold text-center"
         >
-          <div class="text-lg">{{ item.number }}</div>
+          <div class="text-lg">{{ idx }}</div>
         </div>
       </div>
     </section>

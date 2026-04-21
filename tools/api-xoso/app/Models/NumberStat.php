@@ -19,6 +19,14 @@ class NumberStat extends Model
         'total_count_180_days',
         'total_count_365_days',
         'last_appeared_at',
+        'last_appeared_at_db',
+        'max_gap',
+        'current_gap_db',
+        'max_gap_db',
+        'std_gap',
+        'avg_gap',
+        'std_gap_db',
+        'avg_gap_db',
         'updated_at'
     ];
     public $timestamps = false;

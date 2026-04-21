@@ -6,11 +6,28 @@
       <div
         v-for="item in numbers"
         :key="item.number"
-        class="aspect-square flex items-center justify-center rounded-lg text-sm font-bold cursor-pointer transition hover:scale-105"
+        class="w-full rounded-lg"
         :class="getColor(item)"
         :title="`Số ${item.number} - Gan: ${item.current_gap}`"
       >
-        {{ item.number }}
+        <BasePopover>
+          <template #trigger>
+            <button class="text-center w-full h-full aspect-square rounded-lg text-sm font-bold cursor-pointer transition hover:scale-105">
+              {{ item.number }}
+            </button>
+          </template>
+
+          <div>
+            <p class="text-xs text-gray-700">
+              <h5 class="text-sm font-bold text-center">{{ item.number }}</h5>
+              Gan: <strong>{{ item.current_gap }}</strong>
+              <br />
+              Tần suất: <strong>{{ item.total_count }}</strong>
+              <br />
+              về gần nhất: <strong>{{ item.last_appeared_at }}</strong>
+            </p>
+          </div>
+        </BasePopover>
       </div>
     </div>
 

@@ -3,8 +3,12 @@
 namespace App\Jobs;
 
 use App\Models\Number as ModelsNumber;
+use App\Models\NumberStat;
 use App\Models\Prediction;
+use App\Services\ExplainService;
 use App\Services\PredictionService;
+use App\Services\ScoreService;
+use App\Services\ScoreServiceVip;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -23,14 +27,27 @@ class GeneratePredictionJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(PredictionService $service)
+    public function handle(ScoreService $service, ScoreServiceVip $vipService, ExplainService $explainService)
     {
-        // $data = $service->generate();
+        $stats = NumberStat::where('region', ModelsNumber::REGION_MB)->get();
+        $topDb = $vipService->rankDb($stats)->take(5);
+
+        $explainsDb = $topDb->map(
+            fn($item) =>
+            $explainService->explainDb((object)$item)
+        );
+
+        $top = $vipService->rank($stats)->take(5);
+
+        $explains = $top->map(
+            fn($item) =>
+            $explainService->explainLoto((object)$item)
+        );
         $algorithms = [
-            'gan' => $service->getGan(ModelsNumber::REGION_MB),
-            'trend' => $service->getTrend(ModelsNumber::REGION_MB),
-            'roi' => $service->getRoi(ModelsNumber::REGION_MB),
-            'ai' => $service->getAI(ModelsNumber::REGION_MB),
+            'ranking' => $service->rank($stats),
+            'vip_ranking' => $explains,
+            'vip_db_ranking' => $explainsDb,
+            'db_ranking' => $service->rankDb($stats),
         ];
 
         foreach ($algorithms as $code => $data) {
@@ -41,26 +58,11 @@ class GeneratePredictionJob implements ShouldQueue
                     'algorithm' => $code,
                 ],
                 [
-                    'algorithm' => $code,
                     'numbers' => $data,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]
             );
         }
-
-        // Prediction::updateOrCreate(
-        //     [
-        //         'date' => today(),
-        //         'region' => 'mb'
-        //     ],
-        //     [
-        //         'numbers' => $data['numbers'],
-        //         'meta' => $data['meta'],
-        //         'algorithm' => 'weighted_v2',
-        //         'created_at' => now(),
-        //         'updated_at' => now(),
-        //     ]
-        // );
     }
 }
