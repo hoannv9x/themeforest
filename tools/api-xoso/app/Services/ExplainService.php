@@ -25,7 +25,7 @@ class ExplainService
     return [
       'number' => $item->number,
       'label' => $this->getLabel($gapRatio, $z, $item),
-      'signals' => $signals,
+      // 'signals' => $signals,
       'message' => $this->buildMessage($item, $gapRatio, $z),
     ];
   }
@@ -62,6 +62,7 @@ class ExplainService
     }
 
     if ($z > 1.5 && $z < 2.5) {
+      $z = round($z, 2);
       return "Gan DB đang lệch +{$z}σ so với trung bình → khả năng hồi cao.";
     }
 
@@ -116,6 +117,7 @@ class ExplainService
     }
 
     if ($z > 1.5) {
+      $z = round($z, 2);
       return "Gan lệch +{$z}σ → có xu hướng hồi về trung bình.";
     }
 

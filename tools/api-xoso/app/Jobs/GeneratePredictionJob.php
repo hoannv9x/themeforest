@@ -44,10 +44,11 @@ class GeneratePredictionJob implements ShouldQueue
             $explainService->explainLoto((object)$item)
         );
         $algorithms = [
-            'ranking' => $service->rank($stats),
+            'ranking' => $service->rank($stats)->select('number', 'score')->take(5),
             'vip_ranking' => $explains,
             'vip_db_ranking' => $explainsDb,
-            'db_ranking' => $service->rankDb($stats),
+            'db_ranking' => $service->rankDb($stats)
+                ->select('number', 'db_score')->take(5),
         ];
 
         foreach ($algorithms as $code => $data) {

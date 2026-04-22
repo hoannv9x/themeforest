@@ -1,18 +1,12 @@
 <script setup>
 import { ref } from "vue";
+import { useAuthStore } from '~/stores/auth';
 
+const authStore = useAuthStore();
 const isOpen = ref(false);
-
-// fake user (sau này thay bằng API)
-const user = ref(null);
 
 const toggleMenu = () => {
   isOpen.value = !isOpen.value;
-};
-
-const logout = async () => {
-  // await $fetch('/api/logout')
-  user.value = null;
 };
 </script>
 
@@ -36,7 +30,7 @@ const logout = async () => {
       <!-- Right -->
       <div class="flex items-center gap-3">
         <!-- Nếu chưa login -->
-        <template v-if="!user">
+        <template v-if="!authStore.isAuthenticated">
           <NuxtLink to="/login" class="text-sm">Đăng nhập</NuxtLink>
           <NuxtLink
             to="/register"
@@ -54,7 +48,7 @@ const logout = async () => {
               class="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg"
             >
               <img src="https://i.pravatar.cc/30" class="w-6 h-6 rounded-full" />
-              <span>{{ user.name }}</span>
+              <span>{{ authStore.user.name }}</span>
             </button>
 
             <!-- dropdown -->
@@ -66,7 +60,7 @@ const logout = async () => {
                 Profile
               </NuxtLink>
               <button
-                @click="logout"
+                @click="authStore.logout"
                 class="w-full text-left px-3 py-2 hover:bg-gray-100"
               >
                 Logout

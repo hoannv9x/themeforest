@@ -26,6 +26,7 @@ class UpdatePredictionAccuracy
 
     $predictions = Prediction::where('date', $latestDate)
       ->where('region', $region)
+      ->whereIn('algorithm', ['ranking', 'vip_ranking'])
       ->get();
 
     foreach ($predictions as $p) {
@@ -37,6 +38,27 @@ class UpdatePredictionAccuracy
 
       $p->accuracy = $hit / count($pred);
       $p->save();
+    }
+
+    $numbersDB = Number::where('result_id', $result->id)
+      ->whereIn('prize', ['db'])
+      ->pluck('number')
+      ->first();
+
+    $predictionsDB = Prediction::where('date', $latestDate)
+      ->where('region', $region)
+      ->whereIn('algorithm', ['db_ranking', 'vip_db_ranking'])
+      ->get();
+
+    foreach ($predictionsDB as $pDB) {
+      $pred = array_column($pDB->numbers, 'number');
+
+      if (empty($pred)) continue;
+
+      $hit = in_array($numbersDB, $pred);
+
+      $pDB->accuracy = $hit ? 1 : 0;
+      $pDB->save();
     }
 
     return $next($payload);

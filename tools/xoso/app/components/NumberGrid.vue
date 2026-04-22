@@ -19,7 +19,7 @@
 
           <div>
             <p class="text-xs text-gray-700">
-              <h5 class="text-sm font-bold text-center">{{ item.number }}</h5>
+              <p class="text-sm font-bold text-center">{{ item.number }}</p>
               Gan: <strong>{{ item.current_gap }}</strong>
               <br />
               Tần suất: <strong>{{ item.total_count }}</strong>

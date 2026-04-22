@@ -9,7 +9,7 @@ onMounted(async () => {
     const data = await api.getStats();
     stats.value = data.data;
     const predictionsData = await api.getPredictions();
-    predictions.value = predictionsData.data;
+    predictions.value = predictionsData.data?.predictions || [];
   } catch (e) {
     console.log(e);
   } finally {
@@ -53,11 +53,11 @@ onMounted(async () => {
 
       <div v-else class="flex justify-center flex-wrap gap-2">
         <div
-          v-for="(item, idx) in predictions?.top_numbers || []"
+          v-for="(item, idx) in predictions.ranking?.numbers || []"
           :key="idx"
           class="bg-red-500 text-white px-4 py-3 rounded-lg font-bold text-center"
         >
-          <div class="text-lg">{{ idx }}</div>
+          <div class="text-lg">{{ item.number }}</div>
         </div>
       </div>
     </section>

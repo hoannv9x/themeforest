@@ -6,7 +6,9 @@ use App\Models\Number;
 use App\Models\NumberStat;
 use App\Models\Prediction;
 use App\Models\Result;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 use function PHPUnit\Framework\isNumeric;
 
@@ -198,6 +200,18 @@ class PredictionService
     }
     arsort($numberCounts);
     $topNumbers = array_slice($numberCounts, 0, 5, true);
+
+    if (Auth::check() && Auth::user()->role == User::ROLE_VIP) {
+      $predictions = [
+        'db_ranking'   => $predictions['vip_db_ranking'] ?? null,
+        'ranking' => $predictions['vip_ranking'] ?? null,
+      ];
+    } else {
+      $predictions = [
+        'db_ranking'   => $predictions['db_ranking'] ?? null,
+        'ranking' => $predictions['ranking'] ?? null,
+      ];
+    }
 
     return [
       'predictions' => $predictions,

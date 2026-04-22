@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\NumberStatController;
 use App\Http\Controllers\Api\PredictionController;
 use App\Http\Controllers\Api\ResultController;
@@ -7,7 +8,9 @@ use App\Http\Controllers\Api\StatsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
-
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/register', [AuthController::class, 'register']);
     Route::get('/results', [ResultController::class, 'index']);
     Route::get('/results/{date}', [ResultController::class, 'show']);
 

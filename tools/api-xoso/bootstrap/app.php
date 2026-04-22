@@ -7,6 +7,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use App\Jobs\CrawlResultJob;
 use App\Jobs\GeneratePredictionJob;
 use App\Jobs\UpdateStatsJob;
+use Carbon\Carbon;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,9 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withSchedule(function (Schedule $schedule) {
-        $schedule->job(new CrawlResultJob)->daily('18:35');
-        $schedule->job(new UpdateStatsJob)->daily('19:00');
-        $schedule->job(new GeneratePredictionJob)->daily('00:00');
+        $schedule->job(new CrawlResultJob(date: Carbon::today()->format('Y-m-d')))->daily('18:35');
+        $schedule->job(new UpdateStatsJob())->daily('19:00');
+        $schedule->job(new GeneratePredictionJob())->daily('00:00');
     })
     ->withMiddleware(function (Middleware $middleware) {
         //

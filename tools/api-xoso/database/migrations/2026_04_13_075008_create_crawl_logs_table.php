@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('source');
             $table->string('status');
-            $table->string('message')->nullable();
+            $table->longText('message')->nullable();
             $table->timestamp('created_at');
         });
     }

@@ -33,6 +33,7 @@ return new class extends Migration
             $table->integer('std_gap')->comment('Khoảng cách chuẩn')->default(0);
             $table->integer('std_gap_db')->comment('Khoảng cách chuẩn giải đặc biệt')->default(0);
             $table->timestamp('updated_at');
+            $table->unique(['number', 'region']);
         });
     }
 
