@@ -16,5 +16,17 @@ export const useApi = () => {
 
     getMostFrequentNumbers: (params) => $api.get('/v1/number/most-frequent', { params }),
 
+    getVipPredictions: () => $api.get('/v1/vip/predictions'),
+
+    getMe: () => $api.get('/v1/me'),
+    getPaymentPlans: () => $api.get('/v1/payments/plans'),
+    createPayment: (payload) => $api.post('/v1/payments', payload),
+    getPaymentStatus: (paymentId) => $api.get(`/v1/payments/${paymentId}/status`),
+    getApiSubscription: () => $api.get('/v1/api/subscription'),
+    getApiWebhooks: () => $api.get('/v1/api/webhooks'),
+    createApiWebhook: (payload) => $api.post('/v1/api/webhooks', payload),
+    updateApiWebhook: (id, payload) => $api.put(`/v1/api/webhooks/${id}`, payload),
+    deleteApiWebhook: (id) => $api.delete(`/v1/api/webhooks/${id}`),
+    markPaymentPaid: (payload) => $api.post(`/v1/payments/bank-notify`, payload),
   };
 };

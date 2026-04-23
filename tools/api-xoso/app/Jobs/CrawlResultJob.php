@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\DomCrawler\Crawler;
 use Throwable;
+use App\Services\WebhookDispatchService;
 
 use function Symfony\Component\Clock\now;
 
@@ -43,7 +44,8 @@ class CrawlResultJob implements ShouldQueue
             }
 
             try {
-                $payload = $this->fetchFromApi($region);
+                // $payload = $this->fetchFromApi($region);
+                $payload = null;
 
                 if (!$this->isValidPayload($payload)) {
                     Log::warning("API failed → fallback crawling...");
@@ -372,6 +374,8 @@ class CrawlResultJob implements ShouldQueue
                 if (!empty($numbers)) {
                     Number::insert($numbers);
                 }
+
+                app(WebhookDispatchService::class)->dispatchResultUpdated($result);
 
                 DB::commit();
             } catch (Throwable $e) {

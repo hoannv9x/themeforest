@@ -22,6 +22,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'permission',
+        'vip_expired_at',
     ];
 
     /**
@@ -43,9 +46,14 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'vip_expired_at' => 'datetime',
         ];
     }
 
     const ROLE_VIP = 'vip';
     const ROLE_USER = 'user';
+    const ROLE_ADMIN = 'admin';
+
+    const PERMISSION_USER = 'user';
+    const PERMISSION_DEVELOPER = 'developer';
 }

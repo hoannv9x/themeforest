@@ -25,6 +25,8 @@ const toggleMenu = () => {
         <NuxtLink to="/dashboard">Dashboard</NuxtLink>
         <NuxtLink to="/results">Kết quả</NuxtLink>
         <NuxtLink to="/vip" class="text-yellow-500 font-semibold"> VIP </NuxtLink>
+        <NuxtLink to="/api-register" class="text-blue-600 font-semibold"> API </NuxtLink>
+        <NuxtLink to="/api-playground">API Test</NuxtLink>
       </nav>
 
       <!-- Right -->
@@ -80,6 +82,8 @@ const toggleMenu = () => {
       <NuxtLink to="/dashboard" class="block py-2">Dashboard</NuxtLink>
       <NuxtLink to="/results" class="block py-2">Kết quả</NuxtLink>
       <NuxtLink to="/vip" class="block py-2 text-yellow-500">VIP</NuxtLink>
+      <NuxtLink to="/api-register" class="block py-2 text-blue-600">API</NuxtLink>
+      <NuxtLink to="/api-playground" class="block py-2">API Test</NuxtLink>
     </div>
   </header>
 </template>

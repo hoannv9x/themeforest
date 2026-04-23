@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('phone_number')->nullable()->comment('Số điện thoại của người dùng');
             $table->string('address')->nullable()->comment('Địa chỉ của người dùng');
             $table->rememberToken()->comment('Token để "ghi nhớ" người dùng cho các phiên đăng nhập sau');
+            $table->timestamp('vip_expired_at')->nullable()->comment('Thời điểm hết hạn VIP của người dùng');
             $table->timestamps();
         });
 

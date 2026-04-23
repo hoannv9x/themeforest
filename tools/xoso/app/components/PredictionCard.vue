@@ -19,7 +19,7 @@
       <div
         v-for="(item, index) in data.predictions?.ranking?.numbers || []"
         :key="index"
-        class="bg-white text-black px-4 py-3 rounded-lg font-bold text-center"
+        class="bg-white text-black px-4 py-3 rounded-lg font-bold text-center flex justify-center items-center flex-col"
         :class="{ 'max-sm:col-span-2': index == 2 && data.predictions?.ranking?.numbers[0].label }"
       >
         <div class="text-2xl font-extrabold tracking-wide">
@@ -55,7 +55,7 @@
       <div
         v-for="(item, index) in data?.predictions?.db_ranking?.numbers || []"
         :key="index"
-        class="bg-white text-black px-4 py-3 rounded-lg font-bold text-center"
+        class="bg-white text-black px-4 py-3 rounded-lg font-bold text-center flex justify-center items-center flex-col"
         :class="{ 'max-sm:col-span-2': index == 2 && data.predictions?.db_ranking?.numbers[0].label }"
       >
         <div class="text-2xl font-extrabold tracking-wide">

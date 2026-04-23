@@ -185,7 +185,7 @@ class PredictionService
     return $predictions;
   }
 
-  function getPredictionPro($region): array
+  function getPredictionPro($region, $vip = false): array
   {
     $predictions = $this->getPrediction($region);
     $numberCounts = [];
@@ -201,7 +201,7 @@ class PredictionService
     arsort($numberCounts);
     $topNumbers = array_slice($numberCounts, 0, 5, true);
 
-    if (Auth::check() && Auth::user()->role == User::ROLE_VIP) {
+    if (Auth::check() && Auth::user()->role == User::ROLE_VIP && $vip) {
       $predictions = [
         'db_ranking'   => $predictions['vip_db_ranking'] ?? null,
         'ranking' => $predictions['vip_ranking'] ?? null,

@@ -101,5 +101,14 @@ export const useAuthStore = defineStore('auth', {
       const userCookie = useCookie('user', { maxAge: 60 * 60 * 24 * 7, path: '/' });
       userCookie.value = user;
     },
+
+    async fetchMe() {
+      const { $api } = useNuxtApp();
+      if (!this.token) return null;
+
+      const response = await $api.get('/v1/me');
+      this.setUser(response.data.user);
+      return response.data.user;
+    },
   },
 });

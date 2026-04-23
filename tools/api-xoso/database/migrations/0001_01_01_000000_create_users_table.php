@@ -16,7 +16,9 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->string('password');
-            $table->enum('role', ['user', 'admin'])->default('user');
+            $table->enum('role', ['user', 'admin', 'vip'])->default('user');
+            $table->enum('permission', ['user', 'developer'])->default('user');
+            $table->timestamp('vip_expired_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

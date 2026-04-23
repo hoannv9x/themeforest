@@ -20,15 +20,9 @@ export default defineNuxtPlugin((nuxtApp) => {
     // If we are on an admin route, use the admin token
     // Otherwise, use the regular user token
     const url = useRequestURL();
-    const isAdminPath = url.pathname.startsWith('/admin');
 
-    let token = null;
-    if (isAdminPath) {
-      token = useCookie('admin_token').value;
-    } else {
-      token = useCookie('sanctum_token').value;
-    }
-
+    let token = useCookie('sanctum_token').value;
+    
     if (token) {
       request.headers.Authorization = `Bearer ${token}`;
     }
