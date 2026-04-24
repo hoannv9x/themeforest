@@ -43,9 +43,9 @@ class PaymentService
             'duration_days' => $plan['days'],
             'amount' => $plan['amount'],
             'transfer_content' => $this->buildTransferContent($user->id, $type),
-            'bank_account_name' => env('PAYMENT_BANK_ACCOUNT_NAME', 'XOSO AI'),
-            'bank_account_number' => env('PAYMENT_BANK_ACCOUNT_NUMBER', '0000000000'),
-            'bank_name' => env('PAYMENT_BANK_NAME', 'MB BANK'),
+            'bank_account_name' => config('services.payment.bank_account_name'),
+            'bank_account_number' => config('services.payment.bank_account_number'),
+            'bank_name' => config('services.payment.bank_name'),
             'status' => 'pending',
         ]);
     }

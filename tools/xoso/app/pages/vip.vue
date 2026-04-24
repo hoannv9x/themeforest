@@ -21,11 +21,7 @@ const isNearExpired = computed(() => {
 });
 
 const qrUrl = computed(() =>
-  qrContent.value
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(
-        qrContent.value
-      )}`
-    : ""
+  qrContent.value || ""
 );
 
 const selectedPlanInfo = computed(() => plans.value?.[selectedPlan.value] || null);
@@ -93,14 +89,14 @@ function beginPolling() {
   }, 5000);
 }
 
-async function markPaymentPaid() {
-  await api.markPaymentPaid({
-    transfer_content: activePayment.value.transfer_content,
-    amount: activePayment.value.amount,
-    bank_ref: activePayment.value.bank_ref,
-    secret: activePayment.value.secret,
-  });
-}
+// async function markPaymentPaid() {
+//   await api.markPaymentPaid({
+//     transfer_content: activePayment.value.transfer_content,
+//     amount: activePayment.value.amount,
+//     bank_ref: activePayment.value.bank_ref,
+//     secret: activePayment.value.secret,
+//   });
+// }
 
 onMounted(async () => {
   if (!authStore.isAuthenticated) return;
@@ -170,12 +166,12 @@ onUnmounted(() => stopPolling());
           >Lưu ý: Hãy giữ lại hình ảnh chuyển khoản thành công, để tiện xử lý nếu có bất
           kỳ lỗi nào xảy ra trong quá trình thanh toán!</span
         >
-        <button
+        <!-- <button
           class="mt-4 w-full bg-yellow-500 text-black py-2 rounded-lg font-semibold disabled:opacity-50"
           @click="markPaymentPaid()"
         >
           Đã thanh toán
-        </button>
+        </button> -->
       </div>
     </div>
 

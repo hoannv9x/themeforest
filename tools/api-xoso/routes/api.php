@@ -16,19 +16,19 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/payments/bank-notify', [PaymentController::class, 'notifyBank']);
     Route::get('/results', [ResultController::class, 'index']);
     Route::get('/results/{date}', [ResultController::class, 'show']);
-
+    
     Route::get('/stats', [StatsController::class, 'index']);
     Route::get('/stats/{number}', [StatsController::class, 'detail']);
     Route::get('/number/most-frequent', [NumberStatController::class, 'index']);
-
+    
     Route::get('/predictions', [PredictionController::class, 'today']);
     Route::get('/predictions/yesterday', [PredictionController::class, 'yesterday']);
     Route::get('/mini-game', [MiniGameController::class, 'index']);
-
+    
     Route::middleware(['auth:sanctum'])->group(function () {
+        Route::post('/payments/bank-notify', [PaymentController::class, 'notifyBank']);
         Route::get('/me', [AuthController::class, 'user']);
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/payments/plans', [PaymentController::class, 'plans']);

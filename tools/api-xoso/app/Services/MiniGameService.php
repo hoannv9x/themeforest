@@ -12,9 +12,14 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class MiniGameService
 {
+    public function __construct(private readonly MiniGameAiSuggestionService $aiSuggestionService)
+    {
+    }
+
     public function getOverview(?User $user = null, ?Carbon $date = null): array
     {
         $date = $date ?: now();
@@ -242,8 +247,8 @@ class MiniGameService
         return [
             'total_users' => $predictions->count(),
             'leader' => $top->first() ?: null,
+            'predicted_numbers' => $top->pluck('votes', 'number')->all(),
             'top_numbers' => $top->take(10)->all(),
-            'predicted_numbers' => $top->all(),
         ];
     }
 
@@ -255,12 +260,15 @@ class MiniGameService
 
     private function buildAiSuggestion(array $topNumbers): array
     {
-        $topFour = collect($topNumbers)->take(4)->pluck('number')->values()->all();
-        return [
-            'provider' => 'local-rule-based',
-            'numbers' => $topFour,
-            'message' => 'Goi y AI tam thoi uu tien cac so co nhieu luot du doan.',
-        ];
+        try {
+            return $this->aiSuggestionService->suggest($topNumbers);
+        } catch (\Throwable $exception) {
+            Log::warning('Mini game AI suggestion fallback to local', [
+                'error' => $exception->getMessage(),
+            ]);
+
+            return $this->aiSuggestionService->localSuggestion($topNumbers);
+        }
     }
 
     private function drawnNumbers(string $predictionDate): array

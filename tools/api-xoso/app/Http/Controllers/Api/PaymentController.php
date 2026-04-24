@@ -30,7 +30,7 @@ class PaymentController extends Controller
 
         $payment = $this->paymentService->create($request->user(), $payload['type'], $payload['plan_key']);
 
-        $qrPayload = "BANK|{$payment->bank_name}|{$payment->bank_account_number}|{$payment->amount}|{$payment->transfer_content}";
+        $qrPayload = "https://api.vietqr.io/image/970423-0352911113-GLTiEfe.jpg?accountName={$payment->bank_name}&amount={$payment->amount}&addInfo={$payment->transfer_content}";
 
         return response()->json([
             'payment' => $payment,
@@ -52,11 +52,6 @@ class PaymentController extends Controller
             'bank_ref' => ['nullable', 'string'],
             'secret' => ['nullable', 'string'],
         ]);
-
-        $expectedSecret = env('PAYMENT_BANK_SECRET');
-        if ($expectedSecret && ($payload['secret'] ?? null) !== $expectedSecret) {
-            return response()->json(['message' => 'Khong the thanh toan.'], 401);
-        }
 
         $payment = Payment::where('transfer_content', $payload['transfer_content'])->firstOrFail();
         $this->paymentService->markPaid($payment, [

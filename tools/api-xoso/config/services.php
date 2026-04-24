@@ -35,4 +35,22 @@ return [
         ],
     ],
 
+    'mini_game_ai' => [
+        'provider' => env('MINI_GAME_AI_PROVIDER', 'local'),
+        'gemini' => [
+            'api_key' => env('GEMINI_API_KEY'),
+            'model' => env('GEMINI_MODEL', 'gemini-1.5-flash'),
+        ],
+        'openai' => [
+            'api_key' => env('OPENAI_API_KEY'),
+            'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
+        ],
+    ],
+
+    'payment' => [
+        'bank_name' => env('PAYMENT_BANK_NAME'),
+        'bank_account_name' => env('PAYMENT_BANK_ACCOUNT_NAME'),
+        'bank_account_number' => env('PAYMENT_BANK_ACCOUNT_NUMBER'),
+    ],
+
 ];

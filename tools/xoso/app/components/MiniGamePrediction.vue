@@ -57,7 +57,7 @@ const toggleNumber = (num) => {
   }
 
   if (selectedNumbers.value.length >= 5) {
-    err.value = "Moi user chi duoc chon toi da 5 so.";
+    err.value = "Mỗi người dùng chỉ có thể chọn tối đa 5 số.";
     return;
   }
   selectedNumbers.value.push(num);
@@ -69,7 +69,7 @@ const fetchOverview = async () => {
     const { data } = await api.getMiniGameOverview();
     overview.value = data;
   } catch (e) {
-    err.value = e?.response?.data?.message || "Khong tai duoc mini game.";
+    err.value = e?.response?.data?.message || "Không thể tải dữ liệu mini game.";
   } finally {
     loading.value = false;
   }
@@ -91,11 +91,11 @@ const fetchMyPrediction = async () => {
 
 const submitPrediction = async () => {
   if (!authStore.isAuthenticated) {
-    err.value = "Ban can dang nhap de tham gia mini game.";
+    err.value = "Bạn cần đăng nhập để tham gia mini game.";
     return;
   }
   if (selectedNumbers.value.length < 1) {
-    err.value = "Vui long chon it nhat 1 so.";
+    err.value = "Vui lòng chọn ít nhất 1 số.";
     return;
   }
 
@@ -104,10 +104,10 @@ const submitPrediction = async () => {
   submitting.value = true;
   try {
     await api.submitMiniGamePrediction({ numbers: selectedNumbers.value });
-    successMsg.value = "Da luu du doan thanh cong.";
+    successMsg.value = "Lưu dự đoán thành công.";
     await Promise.all([fetchOverview(), fetchMyPrediction()]);
   } catch (e) {
-    err.value = e?.response?.data?.message || "Luu du doan that bai.";
+    err.value = e?.response?.data?.message || "Lưu dự đoán thất bại.";
   } finally {
     submitting.value = false;
   }
@@ -118,9 +118,9 @@ const submitPayoutRequest = async () => {
   payoutSubmitting.value = true;
   try {
     await api.submitMiniGamePayoutRequest(payoutForm.value);
-    payoutMsg.value = "Da gui thong tin STK thanh cong.";
+    payoutMsg.value = "Gửi thông tin STK thành công.";
   } catch (e) {
-    payoutMsg.value = e?.response?.data?.message || "Gui thong tin STK that bai.";
+    payoutMsg.value = e?.response?.data?.message || "Gửi thông tin STK thất bại.";
   } finally {
     payoutSubmitting.value = false;
   }
@@ -142,34 +142,50 @@ onUnmounted(() => {
   <div class="bg-white border rounded-xl p-6 space-y-5">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
       <div>
-        <h2 class="text-xl font-bold">Mini game du doan nguoi dung</h2>
-        <p class="text-sm text-gray-600">Chot du doan luc 17:00 hang ngay.</p>
+        <h2 class="text-xl font-bold">Mini game dự đoán người dùng</h2>
+        <p class="text-sm text-gray-600">Chốt dự đoán lúc 17:00 hàng ngay.</p>
       </div>
       <div class="text-sm font-semibold px-3 py-2 rounded-lg border bg-gray-50">
-        Countdown: {{ countdownLabel }}
+        Thời gian còn lại:
+        <span
+          class="text-lg tracking-wider"
+          :class="{
+            'text-red-600': isCutoff,
+            'text-green-600': !isCutoff && countdownSeconds > 1800,
+            'text-red-400': !isCutoff && countdownSeconds <= 1800,
+          }"
+          >{{ isCutoff ? "Đã hết thời gian dự đoán" : countdownLabel }}</span
+        >
       </div>
     </div>
 
     <div class="grid md:grid-cols-2 gap-4">
       <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
-        <p class="text-sm text-gray-600">So nguoi da du doan</p>
+        <p class="text-sm text-gray-600">Số người đã dự đoán</p>
         <p class="text-3xl font-bold">{{ totalUsers }}</p>
       </div>
       <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
-        <p class="text-sm text-gray-600">Goi y AI noi bo</p>
+        <p class="text-sm text-gray-600">Gợi ý của AI nội bộ</p>
         <p class="font-semibold">{{ aiSuggestion?.numbers?.join(", ") || "--" }}</p>
         <p class="text-xs text-gray-500 mt-1">{{ aiSuggestion?.message }}</p>
       </div>
     </div>
 
-    <div v-if="leader" class="border rounded-xl p-4 text-center bg-amber-50 border-amber-300">
-      <p class="text-sm text-gray-600 mb-2">So duoc vote cao nhat hom nay</p>
-      <div class="text-5xl font-extrabold text-red-600 leading-none">{{ leader.number }}</div>
-      <p class="mt-2 text-sm">Luot binh chon: <strong>{{ leader.votes }}</strong></p>
+    <div
+      v-if="leader"
+      class="border rounded-xl p-4 text-center bg-amber-50 border-amber-300"
+    >
+      <p class="text-sm text-gray-600 mb-2">Số được vote cao nhất hôm nay</p>
+      <div class="text-5xl font-extrabold text-red-600 leading-none">
+        {{ leader.number }}
+      </div>
+      <p class="mt-2 text-sm">
+        Lượt bình chọn: <strong>{{ leader.votes }}</strong>
+      </p>
     </div>
 
     <div>
-      <h3 class="font-semibold mb-2">Top 10 so duoc binh chon</h3>
+      <h3 class="font-semibold mb-2">Top 10 số được chọn</h3>
       <div class="flex flex-wrap gap-2">
         <div
           v-for="(item, idx) in topNumbers"
@@ -181,43 +197,43 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div>
-      <h3 class="font-semibold mb-2">Tat ca so da du doan</h3>
-      <div class="flex flex-wrap gap-2 max-h-40 overflow-auto">
-        <div
-          v-for="(item, idx) in predictedNumbers"
-          :key="`all-${idx}-${item.number}`"
-          class="px-2 py-1 rounded border text-xs"
-        >
-          {{ item.number }}: {{ item.votes }}
-        </div>
-      </div>
-    </div>
-
-    <div v-if="!authStore.isAuthenticated" class="border rounded-lg p-3 text-sm bg-yellow-50 border-yellow-200">
-      Ban can tai khoan de tham gia mini game.
-      <NuxtLink to="/register" class="font-semibold underline ml-1">Dang ky ngay</NuxtLink>
-      hoac
-      <NuxtLink to="/login" class="font-semibold underline ml-1">Dang nhap</NuxtLink>.
+    <div
+      v-if="!authStore.isAuthenticated"
+      class="border rounded-lg p-3 text-sm bg-yellow-50 border-yellow-200"
+    >
+      Bạn cần đăng nhập để tham gia mini game.
+      <NuxtLink to="/register" class="font-semibold underline ml-1"
+        >Đăng ký ng</NuxtLink
+      >
+      hoặc
+      <NuxtLink to="/login" class="font-semibold underline ml-1">Đăng nhập</NuxtLink>.
     </div>
 
     <div v-else class="space-y-3">
-      <h3 class="font-semibold">Chon toi da 5 so du doan</h3>
-      <div class="grid grid-cols-10 gap-2 max-h-56 overflow-auto">
+      <h3 class="font-semibold">Chọn tối đa 5 số dự đoán</h3>
+      <div class="grid grid-cols-10 gap-2 max-sm:grid-cols-5 max-h-56 overflow-auto">
         <button
           v-for="num in numberGrid"
           :key="`pick-${num}`"
-          class="text-xs rounded px-2 py-2 border font-semibold"
-          :class="isSelected(num) ? 'bg-red-500 text-white border-red-500' : 'bg-white hover:bg-gray-100'"
+          class="text-sm rounded px-2 py-2 border font-semibold"
+          :class="
+            isSelected(num)
+              ? 'bg-blue-200 text-text-black border-blue-200'
+              : 'bg-white hover:bg-gray-100'
+          "
           @click="toggleNumber(num)"
         >
-          {{ num }}
+          {{ num }} <br />
+          <span title="Số người dự đoán" class="text-[11px]" :class="{'text-gray-600': predictedNumbers[num] || 0 > 0}">({{ predictedNumbers[num] || "0" }})</span>
         </button>
       </div>
 
-      <p class="text-sm">Da chon: <strong>{{ selectedNumbers.join(", ") || "--" }}</strong></p>
+      <p class="text-sm">
+        Đã chọn: <strong>{{ selectedNumbers.join(", ") || "--" }}</strong>
+      </p>
       <p v-if="myPrediction" class="text-xs text-gray-500">
-        Du doan cua ban da luu luc: {{ myPrediction.updated_at || myPrediction.created_at }}
+        Bạn đã dự đoán lúc:
+        {{ myPrediction.updated_at || myPrediction.created_at }}
       </p>
 
       <div class="flex gap-2">
@@ -226,7 +242,9 @@ onUnmounted(() => {
           :disabled="submitting || isCutoff"
           @click="submitPrediction"
         >
-          {{ submitting ? "Dang luu..." : isCutoff ? "Da het gio du doan" : "Luu du doan" }}
+          {{
+            submitting ? "Đang lưu..." : isCutoff ? "Đã hết thời gian dự đoán" : "Lưu dự đoán"
+          }}
         </button>
         <button class="border px-4 py-2 rounded-lg text-sm" @click="fetchOverview">
           Refresh
@@ -234,12 +252,24 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="space-y-3 border-t pt-4" v-if="authStore.isAuthenticated">
+    <!-- <div class="space-y-3 border-t pt-4" v-if="authStore.isAuthenticated">
       <h3 class="font-semibold">Form nhan thuong (nguoi thang tuan)</h3>
       <div class="grid md:grid-cols-2 gap-3">
-        <input v-model="payoutForm.bank_name" class="border rounded-lg px-3 py-2 text-sm" placeholder="Ten ngan hang" />
-        <input v-model="payoutForm.bank_account_name" class="border rounded-lg px-3 py-2 text-sm" placeholder="Chu tai khoan" />
-        <input v-model="payoutForm.bank_account_number" class="border rounded-lg px-3 py-2 text-sm md:col-span-2" placeholder="So tai khoan" />
+        <input
+          v-model="payoutForm.bank_name"
+          class="border rounded-lg px-3 py-2 text-sm"
+          placeholder="Ten ngan hang"
+        />
+        <input
+          v-model="payoutForm.bank_account_name"
+          class="border rounded-lg px-3 py-2 text-sm"
+          placeholder="Chu tai khoan"
+        />
+        <input
+          v-model="payoutForm.bank_account_number"
+          class="border rounded-lg px-3 py-2 text-sm md:col-span-2"
+          placeholder="So tai khoan"
+        />
       </div>
       <textarea
         v-model="payoutForm.note"
@@ -254,11 +284,11 @@ onUnmounted(() => {
       >
         {{ payoutSubmitting ? "Dang gui..." : "Gui thong tin STK" }}
       </button>
-    </div>
+    </div> -->
 
     <p v-if="err" class="text-sm text-red-600">{{ err }}</p>
     <p v-if="successMsg" class="text-sm text-green-600">{{ successMsg }}</p>
     <p v-if="payoutMsg" class="text-sm text-blue-600">{{ payoutMsg }}</p>
-    <div v-if="loading" class="text-sm text-gray-500">Dang tai du lieu mini game...</div>
+    <div v-if="loading" class="text-sm text-gray-500">Loading...</div>
   </div>
 </template>
