@@ -88,6 +88,11 @@ abstract class ScoreServiceBase
 
   protected function applyRules($item, float $score, float $gapScore): float
   {
+    // Vừa về hôm gần nhất => xác suất lặp ngắn hạn thấp, phạt rất mạnh.
+    if (($item->current_gap ?? 0) === 0) {
+      $score *= 0.05;
+    }
+
     if ($item->current_gap_db === 0) {
       $score *= 0.5;
     }

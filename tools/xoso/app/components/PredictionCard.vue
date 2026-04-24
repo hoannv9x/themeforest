@@ -75,6 +75,64 @@
       </div>
     </div>
 
+    <div
+      v-if="data?.predictions?.xien_2?.numbers?.length || data?.predictions?.xien_3?.numbers?.length || data?.predictions?.xien_4?.numbers?.length"
+      class="mt-6 space-y-4"
+    >
+      <h3 class="text-xl font-bold mb-2">Gợi ý xiên VIP</h3>
+      <div v-if="data?.predictions?.xien_2?.numbers?.length" class="space-y-2">
+        <p class="font-semibold">Xiên 2</p>
+        <div class="flex flex-wrap gap-2">
+          <span
+            v-for="(item, index) in data.predictions.xien_2.numbers"
+            :key="`x2-${index}`"
+            class="bg-white text-black px-3 py-2 rounded-lg text-sm font-bold"
+          >
+            {{ item.numbers?.join(" - ") }}
+          </span>
+        </div>
+      </div>
+
+      <div v-if="data?.predictions?.xien_3?.numbers?.length" class="space-y-2">
+        <p class="font-semibold">Xiên 3</p>
+        <div class="flex flex-wrap gap-2">
+          <span
+            v-for="(item, index) in data.predictions.xien_3.numbers"
+            :key="`x3-${index}`"
+            class="bg-white text-black px-3 py-2 rounded-lg text-sm font-bold"
+          >
+            {{ item.numbers?.join(" - ") }}
+          </span>
+        </div>
+      </div>
+
+      <div v-if="data?.predictions?.xien_4?.numbers?.length" class="space-y-2">
+        <p class="font-semibold">Xiên 4</p>
+        <div class="flex flex-wrap gap-2">
+          <span
+            v-for="(item, index) in data.predictions.xien_4.numbers"
+            :key="`x4-${index}`"
+            class="bg-white text-black px-3 py-2 rounded-lg text-sm font-bold"
+          >
+            {{ item.numbers?.join(" - ") }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="data?.predictions?.three_cang?.numbers?.length" class="mt-6 space-y-3">
+      <h3 class="text-xl font-bold">Gợi ý 3 càng (3 số cuối giải đặc biệt)</h3>
+      <div class="flex flex-wrap gap-2">
+        <span
+          v-for="(item, index) in data.predictions.three_cang.numbers"
+          :key="`3c-${index}`"
+          class="bg-white text-black px-3 py-2 rounded-lg text-sm font-bold"
+        >
+          {{ item.number }}
+        </span>
+      </div>
+    </div>
+
     <p class="mt-3">Lưu ý</p>
     <p class="text-xs opacity-70 mt-1">Dữ liệu được phân tích từ lịch sử gần đây</p>
     <p class="text-xs opacity-70">

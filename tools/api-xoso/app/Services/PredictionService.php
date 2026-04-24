@@ -14,6 +14,80 @@ use function PHPUnit\Framework\isNumeric;
 
 class PredictionService
 {
+  public function getYesterdayPredictionWithHits($region, $vip = false): array
+  {
+    $yesterday = Carbon::yesterday()->toDateString();
+    $predictionBundle = $this->getPredictionProByDate($region, $yesterday, $vip);
+    $predictions = $predictionBundle['predictions'] ?? [];
+
+    $result = Result::where('region', $region)
+      ->whereDate('date', $yesterday)
+      ->latest('id')
+      ->first();
+
+    $allDrawnNumbers = collect();
+    $dbDrawnNumbers = collect();
+
+    if ($result) {
+      $allDrawnNumbers = Number::where('result_id', $result->id)
+        ->pluck('number')
+        ->map(fn($number) => str_pad((string) $number, 2, '0', STR_PAD_LEFT))
+        ->unique()
+        ->values();
+
+      $dbDrawnNumbers = Number::where('result_id', $result->id)
+        ->where('prize', 'db')
+        ->pluck('number')
+        ->map(fn($number) => str_pad((string) $number, 2, '0', STR_PAD_LEFT))
+        ->unique()
+        ->values();
+    }
+
+    $lotoNumbers = collect($predictions['ranking']['numbers'] ?? []);
+    $dbNumbers = collect($predictions['db_ranking']['numbers'] ?? []);
+
+    $lotoWithHit = $lotoNumbers->map(function ($item) use ($allDrawnNumbers) {
+      $predicted = str_pad((string) ($item['number'] ?? ''), 2, '0', STR_PAD_LEFT);
+      $item['is_hit'] = $predicted !== '' && $allDrawnNumbers->contains($predicted);
+      return $item;
+    })->values();
+
+    $dbWithHit = $dbNumbers->map(function ($item) use ($dbDrawnNumbers) {
+      $predicted = str_pad((string) ($item['number'] ?? ''), 2, '0', STR_PAD_LEFT);
+      $item['is_hit'] = $predicted !== '' && $dbDrawnNumbers->contains($predicted);
+      return $item;
+    })->values();
+
+    $lotoHits = $lotoWithHit->where('is_hit', true)->pluck('number')->values();
+    $dbHits = $dbWithHit->where('is_hit', true)->pluck('number')->values();
+
+    return [
+      'date' => $yesterday,
+      'has_result' => (bool) $result,
+      'predictions' => [
+        'ranking' => [
+          ...($predictions['ranking'] ?? []),
+          'numbers' => $lotoWithHit,
+        ],
+        'db_ranking' => [
+          ...($predictions['db_ranking'] ?? []),
+          'numbers' => $dbWithHit,
+        ],
+      ],
+      'hits' => [
+        'loto' => $lotoHits,
+        'db' => $dbHits,
+      ],
+      'stats' => [
+        'loto_total' => $lotoWithHit->count(),
+        'loto_hit_count' => $lotoHits->count(),
+        'db_total' => $dbWithHit->count(),
+        'db_hit_count' => $dbHits->count(),
+        'total_hit_count' => $lotoHits->count() + $dbHits->count(),
+      ],
+    ];
+  }
+
   public function getGan($region)
   {
     return NumberStat::orderByDesc('current_gap')
@@ -187,7 +261,16 @@ class PredictionService
 
   function getPredictionPro($region, $vip = false): array
   {
-    $predictions = $this->getPrediction($region);
+    return $this->getPredictionProByDate($region, now()->toDateString(), $vip);
+  }
+
+  function getPredictionProByDate($region, $date, $vip = false): array
+  {
+    $predictions = Prediction::where('region', $region)
+      ->whereDate('date', $date)
+      ->get()
+      ->keyBy('algorithm')
+      ->toArray();
     $numberCounts = [];
 
     foreach ($predictions as $algo => $value) {
@@ -205,6 +288,10 @@ class PredictionService
       $predictions = [
         'db_ranking'   => $predictions['vip_db_ranking'] ?? null,
         'ranking' => $predictions['vip_ranking'] ?? null,
+        'xien_2' => $predictions['vip_xien_2'] ?? null,
+        'xien_3' => $predictions['vip_xien_3'] ?? null,
+        'xien_4' => $predictions['vip_xien_4'] ?? null,
+        'three_cang' => $predictions['vip_3_cang'] ?? null,
       ];
     } else {
       $predictions = [

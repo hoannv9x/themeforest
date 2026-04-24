@@ -10,6 +10,7 @@ const activePayment = ref(null);
 const qrContent = ref("");
 const pollTimer = ref(null);
 const predictions = ref(null);
+const yesterdayPredictions = ref(null);
 const err = ref(null);
 
 const isVip = computed(() => authStore?.user?.role === "vip");
@@ -40,6 +41,15 @@ async function getVipPredictions() {
   try {
     const { data } = await api.getVipPredictions();
     predictions.value = data;
+  } catch (e) {
+    err.value = e;
+  }
+}
+
+async function getVipYesterdayPredictions() {
+  try {
+    const { data } = await api.getVipYesterdayPredictions();
+    yesterdayPredictions.value = data;
   } catch (e) {
     err.value = e;
   }
@@ -78,6 +88,7 @@ function beginPolling() {
       stopPolling();
       await authStore.fetchMe();
       await getVipPredictions();
+      await getVipYesterdayPredictions();
     }
   }, 5000);
 }
@@ -96,6 +107,7 @@ onMounted(async () => {
   await fetchPlans();
   if (isVip.value) {
     await getVipPredictions();
+    await getVipYesterdayPredictions();
   }
 });
 
@@ -171,6 +183,7 @@ onUnmounted(() => stopPolling());
       <h2 class="text-lg font-semibold text-green-700">Ban dang la VIP</h2>
       <p class="mt-1">Het han: {{ vipExpiredAt }}</p>
       <PredictionCard class="mt-6" :data="predictions" />
+      <YesterdayPredictionHits class="mt-6" v-if="yesterdayPredictions" :data="yesterdayPredictions" />
     </div>
   </div>
 </template>

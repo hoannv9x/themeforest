@@ -83,6 +83,24 @@
             </tr>
           </tbody>
         </table>
+
+        <div class="border-t bg-gray-50 p-3">
+          <h4 class="font-semibold mb-2 text-sm">Bảng đầu - đuôi lô tô (2 số cuối)</h4>
+          <table class="w-full border-collapse text-center text-sm">
+            <thead>
+              <tr>
+                <th class="border px-2 py-1 bg-white w-20">Đầu</th>
+                <th class="border px-2 py-1 bg-white">Đuôi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in getHeadTailRows(data)" :key="`head-${index}-${row.head}`">
+                <td class="border px-2 py-1 font-semibold">{{ row.head }}</td>
+                <td class="border px-2 py-1 text-left">{{ row.tails }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -111,4 +129,36 @@ onMounted(() => {
   date.setDate(date.getDate() - 1);
   toYesterday.value = date.toISOString().slice(0, 10);
 });
+
+const prizeKeys = ["db", "g1", "g2", "g3", "g4", "g5", "g6", "g7"];
+
+const normalizeToTwoDigits = (value) => {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (!digits) return null;
+  return digits.slice(-2).padStart(2, "0");
+};
+
+const getHeadTailRows = (result) => {
+  const heads = Array.from({ length: 10 }, (_, i) => ({
+    head: String(i),
+    tailsList: [],
+  }));
+
+  prizeKeys.forEach((key) => {
+    const values = Array.isArray(result?.[key]) ? result[key] : [];
+    values.forEach((raw) => {
+      const loto = normalizeToTwoDigits(raw);
+      if (!loto) return;
+
+      const head = Number(loto[0]);
+      const tail = loto[1];
+      heads[head].tailsList.push(tail);
+    });
+  });
+
+  return heads.map((item) => ({
+    head: item.head,
+    tails: item.tailsList.sort((a, b) => Number(a) - Number(b)).join(", "),
+  }));
+};
 </script>

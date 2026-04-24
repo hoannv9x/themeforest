@@ -56,4 +56,19 @@ class User extends Authenticatable
 
     const PERMISSION_USER = 'user';
     const PERMISSION_DEVELOPER = 'developer';
+
+    public function miniGamePredictions()
+    {
+        return $this->hasMany(MiniGamePrediction::class);
+    }
+
+    public function miniGameWeeklyScores()
+    {
+        return $this->hasMany(MiniGameWeeklyScore::class);
+    }
+
+    public function miniGamePayoutRequests()
+    {
+        return $this->hasMany(MiniGamePayoutRequest::class);
+    }
 }

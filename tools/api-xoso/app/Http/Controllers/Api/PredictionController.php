@@ -44,4 +44,28 @@ class PredictionController extends Controller
             return $this->predictionService->getPredictionPro(Number::REGION_MB, true);
         });
     }
+
+    public function yesterday()
+    {
+        $key = 'predictions:yesterday:' . Carbon::yesterday()->format('Y-m-d');
+        if (Cache::has($key)) {
+            return Cache::get($key);
+        }
+
+        return Cache::remember($key, Carbon::now()->endOfDay(), function () {
+            return $this->predictionService->getYesterdayPredictionWithHits(Number::REGION_MB);
+        });
+    }
+
+    public function yesterdayVip()
+    {
+        $key = 'predictions:vip:yesterday:' . Carbon::yesterday()->format('Y-m-d');
+        if (Cache::has($key)) {
+            return Cache::get($key);
+        }
+
+        return Cache::remember($key, Carbon::now()->endOfDay(), function () {
+            return $this->predictionService->getYesterdayPredictionWithHits(Number::REGION_MB, true);
+        });
+    }
 }

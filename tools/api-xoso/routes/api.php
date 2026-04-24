@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ApiSubscriptionController;
 use App\Http\Controllers\Api\ApiWebhookController;
 use App\Http\Controllers\Api\NumberStatController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\MiniGameController;
 use App\Http\Controllers\Api\PredictionController;
 use App\Http\Controllers\Api\ResultController;
 use App\Http\Controllers\Api\StatsController;
@@ -24,6 +25,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/number/most-frequent', [NumberStatController::class, 'index']);
 
     Route::get('/predictions', [PredictionController::class, 'today']);
+    Route::get('/predictions/yesterday', [PredictionController::class, 'yesterday']);
+    Route::get('/mini-game', [MiniGameController::class, 'index']);
 
     Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/me', [AuthController::class, 'user']);
@@ -37,10 +40,14 @@ Route::prefix('v1')->group(function () {
         Route::put('/api/webhooks/{apiWebhook}', [ApiWebhookController::class, 'update']);
         Route::delete('/api/webhooks/{apiWebhook}', [ApiWebhookController::class, 'destroy']);
         Route::post('/payments/{payment}/paid', [PaymentController::class, 'markPaid']);
+        Route::get('/mini-game/me', [MiniGameController::class, 'me']);
+        Route::post('/mini-game/predict', [MiniGameController::class, 'predict']);
+        Route::post('/mini-game/payout-request', [MiniGameController::class, 'submitPayoutRequest']);
     });
 
     Route::middleware([VerifyUserVip::class, 'auth:sanctum'])->group(function () {
         Route::get('/vip/predictions', [PredictionController::class, 'todayVip']);
+        Route::get('/vip/predictions/yesterday', [PredictionController::class, 'yesterdayVip']);
     });
 
     Route::middleware('signed')->group(function () {

@@ -11,12 +11,18 @@ export const useApi = () => {
     getStats: () => $api.get('/v1/stats'),
 
     getPredictions: () => $api.get('/v1/predictions'),
+    getYesterdayPredictions: () => $api.get('/v1/predictions/yesterday'),
+    getMiniGameOverview: () => $api.get('/v1/mini-game'),
+    getMiniGameMe: () => $api.get('/v1/mini-game/me'),
+    submitMiniGamePrediction: (payload) => $api.post('/v1/mini-game/predict', payload),
+    submitMiniGamePayoutRequest: (payload) => $api.post('/v1/mini-game/payout-request', payload),
 
     getResults: (params) => $api.get('/v1/results', { params }),
 
     getMostFrequentNumbers: (params) => $api.get('/v1/number/most-frequent', { params }),
 
     getVipPredictions: () => $api.get('/v1/vip/predictions'),
+    getVipYesterdayPredictions: () => $api.get('/v1/vip/predictions/yesterday'),
 
     getMe: () => $api.get('/v1/me'),
     getPaymentPlans: () => $api.get('/v1/payments/plans'),

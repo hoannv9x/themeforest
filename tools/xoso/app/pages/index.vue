@@ -62,6 +62,10 @@ onMounted(async () => {
       </div>
     </section>
 
+    <section class="max-w-6xl mx-auto py-10 px-4">
+      <MiniGamePrediction />
+    </section>
+
     <!-- FEATURES -->
     <section class="bg-gray-50 py-16 px-4">
       <div class="max-w-6xl mx-auto grid md:grid-cols-3 gap-8 text-center">

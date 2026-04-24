@@ -1,6 +1,7 @@
 <script setup>
 const stats = ref([]);
 const predictions = ref([]);
+const yesterdayPredictions = ref(null);
 const numbersMost = ref([]);
 const api = useApi();
 const paramNumberMost = ref({
@@ -16,6 +17,9 @@ onMounted(async () => {
   
   const predictionsData = await api.getPredictions();
   predictions.value = predictionsData.data;
+
+  const yesterdayPredictionsData = await api.getYesterdayPredictions();
+  yesterdayPredictions.value = yesterdayPredictionsData.data;
 });
 
 const handleSelectedDate = async (day) => {
@@ -27,7 +31,9 @@ const handleSelectedDate = async (day) => {
 
 <template>
   <div class="p-6 space-y-6">
+    <MiniGamePrediction />
     <PredictionCard :data="predictions" />
+    <YesterdayPredictionHits v-if="yesterdayPredictions" :data="yesterdayPredictions" />
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <StatsTable :data="stats" />

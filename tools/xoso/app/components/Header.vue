@@ -1,13 +1,39 @@
 <script setup>
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { useAuthStore } from '~/stores/auth';
+import { useRoute } from '#app';
 
 const authStore = useAuthStore();
-const isOpen = ref(false);
+const route = useRoute();
+const isUserMenuOpen = ref(false);
+const isMobileMenuOpen = ref(false);
 
-const toggleMenu = () => {
-  isOpen.value = !isOpen.value;
+const toggleUserMenu = () => {
+  isUserMenuOpen.value = !isUserMenuOpen.value;
 };
+
+const toggleMobileMenu = () => {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value;
+};
+
+const closeMobileMenu = () => {
+  isMobileMenuOpen.value = false;
+};
+
+const closeUserMenu = () => {
+  isUserMenuOpen.value = false;
+};
+
+const handleLogout = async () => {
+  closeUserMenu();
+  closeMobileMenu();
+  await authStore.logout();
+};
+
+watch(() => route.fullPath, () => {
+  closeMobileMenu();
+  closeUserMenu();
+});
 </script>
 
 <template>
@@ -46,7 +72,7 @@ const toggleMenu = () => {
         <template v-else>
           <div class="relative">
             <button
-              @click="toggleMenu"
+              @click="toggleUserMenu"
               class="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg"
             >
               <img src="https://i.pravatar.cc/30" class="w-6 h-6 rounded-full" />
@@ -55,14 +81,14 @@ const toggleMenu = () => {
 
             <!-- dropdown -->
             <div
-              v-if="isOpen"
+              v-if="isUserMenuOpen"
               class="absolute right-0 mt-2 w-40 bg-white shadow rounded-lg p-2"
             >
-              <NuxtLink to="/profile" class="block px-3 py-2 hover:bg-gray-100">
+              <NuxtLink to="/profile" class="block px-3 py-2 hover:bg-gray-100" @click="closeUserMenu">
                 Profile
               </NuxtLink>
               <button
-                @click="authStore.logout"
+                @click="handleLogout"
                 class="w-full text-left px-3 py-2 hover:bg-gray-100"
               >
                 Logout
@@ -72,18 +98,18 @@ const toggleMenu = () => {
         </template>
 
         <!-- Mobile button -->
-        <button @click="toggleMenu" class="md:hidden">☰</button>
+        <button @click="toggleMobileMenu" class="md:hidden">☰</button>
       </div>
     </div>
 
     <!-- Mobile menu -->
-    <div v-if="isOpen" class="md:hidden px-4 pb-4">
-      <NuxtLink to="/" class="block py-2">Trang chủ</NuxtLink>
-      <NuxtLink to="/dashboard" class="block py-2">Dashboard</NuxtLink>
-      <NuxtLink to="/results" class="block py-2">Kết quả</NuxtLink>
-      <NuxtLink to="/vip" class="block py-2 text-yellow-500">VIP</NuxtLink>
-      <NuxtLink to="/api-register" class="block py-2 text-blue-600">API</NuxtLink>
-      <NuxtLink to="/api-playground" class="block py-2">API Test</NuxtLink>
+    <div v-if="isMobileMenuOpen" class="md:hidden px-4 pb-4">
+      <NuxtLink to="/" class="block py-2" @click="closeMobileMenu">Trang chủ</NuxtLink>
+      <NuxtLink to="/dashboard" class="block py-2" @click="closeMobileMenu">Dashboard</NuxtLink>
+      <NuxtLink to="/results" class="block py-2" @click="closeMobileMenu">Kết quả</NuxtLink>
+      <NuxtLink to="/vip" class="block py-2 text-yellow-500" @click="closeMobileMenu">VIP</NuxtLink>
+      <NuxtLink to="/api-register" class="block py-2 text-blue-600" @click="closeMobileMenu">API</NuxtLink>
+      <NuxtLink to="/api-playground" class="block py-2" @click="closeMobileMenu">API Test</NuxtLink>
     </div>
   </header>
 </template>
