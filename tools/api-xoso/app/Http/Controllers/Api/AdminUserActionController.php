@@ -12,13 +12,14 @@ class AdminUserActionController extends Controller
     {
         $payload = $request->validate([
             'role' => ['required', 'in:user,vip'],
+            'days' => ['required', 'integer', 'min:1'],
         ]);
 
         $user->role = $payload['role'];
         if ($payload['role'] !== User::ROLE_VIP) {
             $user->vip_expired_at = null;
         } elseif (!$user->vip_expired_at) {
-            $user->vip_expired_at = now()->addDays(30);
+            $user->vip_expired_at = now()->addDays($payload['days']);
         }
         $user->save();
 
@@ -29,9 +30,11 @@ class AdminUserActionController extends Controller
     {
         $payload = $request->validate([
             'permission' => ['required', 'in:user,developer'],
+            'days' => ['required', 'integer', 'min:1'],
         ]);
 
         $user->permission = $payload['permission'];
+        $user->api_expired_at = now()->addDays($payload['days']);
         $user->save();
 
         return response()->json(['message' => 'Permission updated', 'user' => $user]);

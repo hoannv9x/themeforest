@@ -6,6 +6,7 @@ use App\Models\ApiSubscription;
 use App\Models\Payment;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -68,6 +69,32 @@ class PaymentService
         return $payment->fresh();
     }
 
+    public function recentPayments(User $user, int $days = 3): Collection
+    {
+        $from = now()->subDays($days)->startOfDay();
+
+        return Payment::query()
+            ->where('user_id', $user->id)
+            ->where('created_at', '>=', $from)
+            ->latest('id')
+            ->get();
+    }
+
+    public function notifyManualTransferCompleted(Payment $payment): Payment
+    {
+        if (($payment->meta['manual_review_requested_at'] ?? null) === null) {
+            $payment->update([
+                'meta' => array_merge($payment->meta ?? [], [
+                    'manual_review_requested_at' => now()->toDateTimeString(),
+                ]),
+            ]);
+        }
+
+        $this->sendManualReviewEmail($payment->fresh('user'));
+
+        return $payment->fresh();
+    }
+
     private function buildTransferContent(int $userId, string $type): string
     {
         $prefix = $type === 'api' ? 'API' : 'VIP';
@@ -107,35 +134,56 @@ class PaymentService
         $vipLink = URL::temporarySignedRoute('admin.user.update-role', now()->addDays(7), [
             'user' => $user->id,
             'role' => User::ROLE_VIP,
+            'days' => $payment->duration_days,
         ]);
         $normalLink = URL::temporarySignedRoute('admin.user.update-role', now()->addDays(7), [
             'user' => $user->id,
             'role' => User::ROLE_USER,
+            'days' => 0,
         ]);
         $developerLink = URL::temporarySignedRoute('admin.user.update-permission', now()->addDays(7), [
             'user' => $user->id,
             'permission' => User::PERMISSION_DEVELOPER,
+            'days' => $payment->duration_days,
         ]);
         $userPermissionLink = URL::temporarySignedRoute('admin.user.update-permission', now()->addDays(7), [
             'user' => $user->id,
             'permission' => User::PERMISSION_USER,
+            'days' => 0,
         ]);
 
         $adminMail = env('ADMIN_PAYMENT_EMAIL', 'adminxosoai@gmail.com');
-        $subject = '[XOSO] Thanh toan thanh cong: '.$user->email;
-        $html = "<h2>Thong bao thanh toan thanh cong</h2>
+        $subject = '[XOSO] Thanh toán thành công: '.$user->email;
+        $html = "<h2>Thong bao thanh toán thành công</h2>
             <p>User: <strong>{$user->name}</strong> ({$user->email})</p>
-            <p>Loai goi: <strong>{$payment->plan_name}</strong> ({$payment->type})</p>
-            <p>Noi dung chuyen khoan: <strong>{$payment->transfer_content}</strong></p>
-            <p>So tien: <strong>".number_format($payment->amount)." VND</strong></p>
+            <p>Loại gói cài đặt: <strong>{$payment->plan_name}</strong> ({$payment->type})</p>
+            <p>Nội dung chuyển khoản: <strong>{$payment->transfer_content}</strong></p>
+            <p>Số tiền: <strong>".number_format($payment->amount)." VND</strong></p>
             <hr>
-            <p>Cap nhat role:</p>
-            <p><a href='{$vipLink}'>Dat thanh VIP</a> | <a href='{$normalLink}'>Dat ve User thuong</a></p>
-            <p>Cap nhat permission:</p>
-            <p><a href='{$developerLink}'>Dat thanh Developer</a> | <a href='{$userPermissionLink}'>Dat ve User thuong</a></p>";
+            <p>Cập nhật role:</p>
+            <p><a href='{$vipLink}'>Approve VIP</a> | <a href='{$normalLink}'>Approve User thường</a></p>
+            <p>Cập nhật permission:</p>
+            <p><a href='{$developerLink}'>Approve Developer</a> | <a href='{$userPermissionLink}'>Approve User thường</a></p>";
 
         Mail::html($html, function ($message) use ($adminMail, $subject) {
             $message->to($adminMail)->subject($subject);
+        });
+    }
+
+    private function sendManualReviewEmail(Payment $payment): void
+    {
+        $user = $payment->user;
+        $mailTo = env('ADMIN_PAYMENT_EMAIL', 'xosoai@gmail.com');
+        $subject = '[XOSO] Yêu cầu kiểm tra thanh toán: ' . $user->email;
+        $html = "<h2>Yêu cầu kiểm tra thanh toán thành công</h2>
+            <p>Loại gói cài: <strong>{$payment->plan_name}</strong> ({$payment->type})</p>
+            <p>So tiền: <strong>" . number_format($payment->amount) . " VND</strong></p>
+            <p>Nội dung chuyển khoản: <strong>{$payment->transfer_content}</strong></p>
+            <p>Tình trạng: <strong>{$payment->status}</strong></p>
+            <p>Thời gian user xác nhận thanh toán: <strong>" . now()->toDateTimeString() . "</strong></p>";
+
+        Mail::html($html, function ($message) use ($mailTo, $subject) {
+            $message->to($mailTo)->subject($subject);
         });
     }
 }

@@ -33,25 +33,43 @@ class GeneratePredictionJob implements ShouldQueue
     public function handle(ScoreService $service, ScoreServiceVip $vipService, ExplainService $explainService)
     {
         $stats = NumberStat::where('region', ModelsNumber::REGION_MB)->get();
-        $freeTop = $this->pickDiversifiedNumbers(
+        $sharedTop = $this->pickDiversifiedNumbers(
             $service->rank($stats),
             'ranking',
-            5
+            6
         );
+        $sharedTopByNumber = $sharedTop->keyBy('number');
+
+        $freeTop = $sharedTop->shuffle()->take(3)->values();
+        $vipFromShared = $sharedTop
+            ->reject(fn($item) => $freeTop->pluck('number')->contains($item['number']))
+            ->values();
+
+        $vipTopCandidates = $this->pickDiversifiedNumbers(
+            $vipService->rank($stats),
+            'vip_ranking',
+            10,
+            1.25
+        );
+        $vipTop = collect($vipFromShared);
+        foreach ($vipTopCandidates as $candidate) {
+            if ($vipTop->count() >= 5) {
+                break;
+            }
+            if ($sharedTopByNumber->has($candidate['number']) || $vipTop->pluck('number')->contains($candidate['number'])) {
+                continue;
+            }
+            $vipTop->push($candidate);
+        }
+        $vipTop = $vipTop->take(5)->values();
+
         $freeDbTop = $this->pickDiversifiedNumbers(
             $service->rankDb($stats)->map(fn($item) => [
                 ...$item,
                 'score' => $item['db_score'] ?? 0,
             ]),
             'db_ranking',
-            5
-        );
-
-        $vipTop = $this->pickDiversifiedNumbers(
-            $vipService->rank($stats),
-            'vip_ranking',
-            10,
-            1.25
+            2
         );
         $vipDbTop = $this->pickDiversifiedNumbers(
             $vipService->rankDb($stats)->map(fn($item) => [

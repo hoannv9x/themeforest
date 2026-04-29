@@ -25,6 +25,7 @@ class User extends Authenticatable
         'role',
         'permission',
         'vip_expired_at',
+        'api_expired_at'
     ];
 
     /**

@@ -44,6 +44,25 @@ class PaymentController extends Controller
         return response()->json($payment);
     }
 
+    public function history(Request $request)
+    {
+        $payments = $this->paymentService->recentPayments($request->user(), 3);
+        return response()->json($payments);
+    }
+
+    public function markPaid(Payment $payment, Request $request)
+    {
+        abort_if($payment->user_id !== $request->user()->id, 403, 'Bạn không có quyền truy cập giao dịch này.');
+        abort_if($payment->status !== 'pending', 422, 'Giao dich này không ở trạng thái xử lý.');
+
+        $updated = $this->paymentService->notifyManualTransferCompleted($payment);
+
+        return response()->json([
+            'message' => 'Đã gửi yêu cầu kiểm tra thanh toán. Chúng tôi sẽ xác nhận thanh toán trong vòng gian ngắn nhất.',
+            'payment' => $updated,
+        ]);
+    }
+
     public function notifyBank(Request $request)
     {
         $payload = $request->validate([
@@ -59,6 +78,6 @@ class PaymentController extends Controller
             'bank_ref' => $payload['bank_ref'] ?? null,
         ]);
 
-        return response()->json(['message' => 'Thanh toan thanh cong.']);
+        return response()->json(['message' => 'Thanh toán thành công.']);
     }
 }

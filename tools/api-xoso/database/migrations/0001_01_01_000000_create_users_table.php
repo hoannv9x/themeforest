@@ -19,6 +19,7 @@ return new class extends Migration
             $table->enum('role', ['user', 'admin', 'vip'])->default('user');
             $table->enum('permission', ['user', 'developer'])->default('user');
             $table->timestamp('vip_expired_at')->nullable();
+            $table->timestamp('api_expired_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

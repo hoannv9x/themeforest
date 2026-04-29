@@ -33,6 +33,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/payments/plans', [PaymentController::class, 'plans']);
         Route::post('/payments', [PaymentController::class, 'store']);
+        Route::get('/payments/history', [PaymentController::class, 'history']);
         Route::get('/payments/{payment}/status', [PaymentController::class, 'status']);
         Route::get('/api/subscription', [ApiSubscriptionController::class, 'mySubscription']);
         Route::get('/api/webhooks', [ApiWebhookController::class, 'index']);

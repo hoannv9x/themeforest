@@ -1,5 +1,6 @@
 <script setup>
 import { useAuthStore } from "~/stores/auth";
+const { formatDate } = useFormatters();
 
 const api = useApi();
 const authStore = useAuthStore();
@@ -7,11 +8,13 @@ const loading = ref(false);
 const plans = ref({});
 const selectedPlan = ref("vip_30d");
 const activePayment = ref(null);
+const paymentHistory = ref([]);
 const qrContent = ref("");
 const pollTimer = ref(null);
 const predictions = ref(null);
 const yesterdayPredictions = ref(null);
 const err = ref(null);
+const completePaymentLoading = ref(false);
 
 const isVip = computed(() => authStore?.user?.role === "vip");
 const vipExpiredAt = computed(() => authStore?.user?.vip_expired_at);
@@ -20,9 +23,7 @@ const isNearExpired = computed(() => {
   return new Date(vipExpiredAt.value).getTime() - Date.now() < 1000 * 60 * 60 * 24 * 3;
 });
 
-const qrUrl = computed(() =>
-  qrContent.value || ""
-);
+const qrUrl = computed(() => qrContent.value || "");
 
 const selectedPlanInfo = computed(() => plans.value?.[selectedPlan.value] || null);
 
@@ -56,6 +57,11 @@ async function fetchPlans() {
   plans.value = response.data.vip || {};
 }
 
+async function fetchPaymentHistory() {
+  const response = await api.getPaymentHistory();
+  paymentHistory.value = response.data || [];
+}
+
 async function startVipPayment() {
   loading.value = true;
   err.value = null;
@@ -66,11 +72,27 @@ async function startVipPayment() {
     });
     activePayment.value = response.data.payment;
     qrContent.value = response.data.qr_content;
+    await fetchPaymentHistory();
     beginPolling();
   } catch (e) {
-    err.value = e?.response?.data?.message || "Khong tao duoc giao dich.";
+    err.value = e?.response?.data?.message || "Không tạo được giao dịch.";
   } finally {
     loading.value = false;
+  }
+}
+
+async function completePayment() {
+  if (!activePayment.value?.id) return;
+  completePaymentLoading.value = true;
+  err.value = null;
+  try {
+    const response = await api.completePayment(activePayment.value.id);
+    activePayment.value = response.data.payment;
+    await fetchPaymentHistory();
+  } catch (e) {
+    err.value = e?.response?.data?.message || "Không gửi được yêu cầu hoàn tất.";
+  } finally {
+    completePaymentLoading.value = false;
   }
 }
 
@@ -101,6 +123,7 @@ function beginPolling() {
 onMounted(async () => {
   if (!authStore.isAuthenticated) return;
   await fetchPlans();
+  await fetchPaymentHistory();
   if (isVip.value) {
     await getVipPredictions();
     await getVipYesterdayPredictions();
@@ -117,13 +140,13 @@ onUnmounted(() => stopPolling());
         {{ isNearExpired ? "Gia hạn VIP" : "Nang cap VIP" }}
       </h1>
       <p class="text-gray-600 mt-2">
-        Quet QR va chuyen khoan dung noi dung de he thong tu dong xac nhan.
+        Quét QR và chuyển khoản dung nội dung để hệ thống tự động xác nhận giao dịch.
       </p>
     </div>
 
     <div v-if="!isVip || isNearExpired" class="grid md:grid-cols-2 gap-6">
       <div class="bg-white rounded-xl border p-6">
-        <h2 class="font-semibold mb-4">Chon goi VIP</h2>
+        <h2 class="font-semibold mb-4">Chọn gói VIP</h2>
         <div class="space-y-3">
           <label
             v-for="(plan, key) in plans"
@@ -142,44 +165,76 @@ onUnmounted(() => stopPolling());
           :disabled="loading || !selectedPlanInfo"
           @click="startVipPayment"
         >
-          Tao ma QR thanh toan
+          Tạo mã QR thanh toán
         </button>
         <p v-if="err" class="text-red-500 mt-3 text-sm">{{ err }}</p>
       </div>
 
       <div class="bg-white rounded-xl border p-6" v-if="activePayment">
-        <h2 class="font-semibold mb-3">Thong tin chuyen khoan</h2>
+        <h2 class="font-semibold mb-3">Thông tin chuyển khoản</h2>
         <img v-if="qrUrl" :src="qrUrl" class="w-64 h-64 border mx-auto rounded-lg" />
         <div class="mt-4 text-sm space-y-1">
-          <p><strong>Ngan hang:</strong> {{ activePayment.bank_name }}</p>
-          <p><strong>So TK:</strong> {{ activePayment.bank_account_number }}</p>
-          <p><strong>Chu TK:</strong> {{ activePayment.bank_account_name }}</p>
+          <p><strong>Ngân hàng:</strong> {{ activePayment.bank_name }}</p>
+          <p><strong>Số TK:</strong> {{ activePayment.bank_account_number }}</p>
+          <p><strong>Chủ TK:</strong> {{ activePayment.bank_account_name }}</p>
           <p>
-            <strong>Noi dung:</strong>
+            <strong>Nội dung:</strong>
             <span class="font-mono bg-gray-100 px-2 py-1 rounded">{{
               activePayment.transfer_content
             }}</span>
           </p>
-          <p><strong>Trang thai:</strong> {{ activePayment.status }}</p>
+          <p><strong>Tình trạng:</strong> {{ activePayment.status }}</p>
         </div>
         <span class="text-sm text-gray-600 italic"
           >Lưu ý: Hãy giữ lại hình ảnh chuyển khoản thành công, để tiện xử lý nếu có bất
           kỳ lỗi nào xảy ra trong quá trình thanh toán!</span
         >
-        <!-- <button
+        <button
           class="mt-4 w-full bg-yellow-500 text-black py-2 rounded-lg font-semibold disabled:opacity-50"
-          @click="markPaymentPaid()"
+          :disabled="completePaymentLoading || activePayment.status !== 'pending'"
+          @click="completePayment"
         >
-          Đã thanh toán
-        </button> -->
+          {{
+            completePaymentLoading
+              ? "Đang gửi yêu cầu..."
+              : "Hoàn tất thanh toán"
+          }}
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border p-6">
+      <h2 class="font-semibold mb-3">Lịch sử chuyển khoản (3 ngày gần nhất)</h2>
+      <div v-if="!paymentHistory.length" class="text-sm text-gray-500">
+        Chưa có giao dịch nào trong 3 ngày gần đây.
+      </div>
+      <div v-else class="space-y-2">
+        <div
+          v-for="item in paymentHistory"
+          :key="item.id"
+          class="border rounded-lg p-3 text-sm flex items-center justify-between gap-2"
+        >
+          <div>
+            <p><strong>{{ item.plan_name }}</strong> - {{ Number(item.amount).toLocaleString("vi-VN") }}đ</p>
+            <p class="text-gray-600">Nội dung: <span class="font-mono">{{ item.transfer_content }}</span></p>
+          </div>
+          <div class="text-right">
+            <p class="font-medium">{{ item.status }}</p>
+            <p class="text-gray-500">{{ formatDate(item.created_at, true, 'DD-MM-YYYY HH:mm:ss') }}</p>
+          </div>
+        </div>
       </div>
     </div>
 
     <div v-if="isVip" class="bg-green-50 border border-green-200 rounded-xl p-6">
       <h2 class="text-lg font-semibold text-green-700">Ban dang la VIP</h2>
-      <p class="mt-1">Het han: {{ vipExpiredAt }}</p>
+      <p class="mt-1">Hết hạn: {{ formatDate(vipExpiredAt, true, 'DD-MM-YYYY HH:mm:ss') }}</p>
       <PredictionCard class="mt-6" :data="predictions" />
-      <YesterdayPredictionHits class="mt-6" v-if="yesterdayPredictions" :data="yesterdayPredictions" />
+      <YesterdayPredictionHits
+        class="mt-6"
+        v-if="yesterdayPredictions"
+        :data="yesterdayPredictions"
+      />
     </div>
   </div>
 </template>
