@@ -3,7 +3,8 @@ const stats = ref([]);
 const predictions = ref([]);
 const loading = ref(true);
 const api = useApi();
-
+import { useAuthStore } from "~/stores/auth";
+const authStore = useAuthStore();
 onMounted(async () => {
   try {
     const data = await api.getStats();
@@ -28,17 +29,18 @@ onMounted(async () => {
 
       <p class="opacity-90 mb-6">Xem thống kê, lô gan, tần suất và gợi ý số mỗi ngày</p>
 
-      <div class="flex justify-center gap-4">
+      <div class="flex justify-center gap-4 max-sm:flex-col">
         <NuxtLink
           to="/dashboard"
           class="bg-white text-red-500 px-6 py-3 rounded-lg font-semibold"
         >
-          Xem Dashboard
+          Xem thống kê
         </NuxtLink>
 
         <NuxtLink
           to="/vip"
           class="bg-yellow-400 text-black px-6 py-3 rounded-lg font-semibold"
+          v-if="!authStore.isVip"
         >
           🚀 Nâng cấp VIP
         </NuxtLink>
@@ -46,7 +48,7 @@ onMounted(async () => {
     </section>
 
     <!-- PREVIEW GRID (gây tò mò) -->
-    <section class="max-w-6xl mx-auto py-12 px-4">
+    <section class="max-w-6xl mx-auto py-8 md:py-12 px-4">
       <h2 class="text-2xl font-bold mb-6 text-center">🔥 Số nổi bật hôm nay</h2>
 
       <div v-if="loading" class="text-center">Loading...</div>
@@ -62,12 +64,12 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section class="max-w-6xl mx-auto py-10 px-4">
+    <section class="max-w-6xl mx-auto py-6 md:py-10 px-4">
       <MiniGamePrediction />
     </section>
 
     <!-- FEATURES -->
-    <section class="bg-gray-50 py-16 px-4">
+    <section class="bg-gray-50 py-8 md:py-16 px-4">
       <div class="max-w-6xl mx-auto grid md:grid-cols-3 gap-8 text-center">
         <div class="p-6 bg-white rounded-xl shadow">
           <h3 class="font-bold text-lg mb-2">📊 Thống kê chi tiết</h3>
@@ -88,20 +90,6 @@ onMounted(async () => {
       </div>
     </section>
 
-    <!-- CTA -->
-    <section class="text-center py-16 px-4">
-      <h2 class="text-3xl font-bold mb-4">Muốn xem gợi ý chính xác hơn?</h2>
-
-      <p class="mb-6 opacity-70">
-        Nâng cấp VIP để xem phân tích nâng cao và dự đoán mỗi ngày
-      </p>
-
-      <NuxtLink
-        to="/vip"
-        class="bg-red-500 text-white px-8 py-3 rounded-lg text-lg font-semibold"
-      >
-        🚀 Nâng cấp VIP ngay
-      </NuxtLink>
-    </section>
+    <CTA />
   </div>
 </template>

@@ -11,7 +11,7 @@
             scope="col"
             class="px-6 py-3 max-sm:px-1 max-sm:py-1 font-medium text-center"
           >
-            Number
+            Số
           </th>
           <th scope="col" class="font-medium text-center">Gan</th>
           <th scope="col" class="font-medium text-center">Về gần nhất</th>
@@ -28,9 +28,9 @@
         >
           {{ item.number }}
         </th>
-        <td class="text-center">{{ item.current_gap }} ngày</td>
+        <td class="text-center">{{ item.current_gap }} <span class="max-sm:hidden">ngày</span></td>
         <td class="text-center">{{ formatDate(item.last_appeared_at) }}</td>
-        <td class="text-center">{{ item.max_gap }} ngày</td>
+        <td class="text-center">{{ item.max_gap }} <span class="max-sm:hidden">ngày</span></td>
       </tr>
     </table>
   </div>

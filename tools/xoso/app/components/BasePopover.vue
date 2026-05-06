@@ -11,7 +11,8 @@
         v-if="open"
         ref="popover"
         :style="{ transform: `translateX(calc(-50% + ${position.left}px))` }"
-        class="absolute left-1/2 -translate-x-1/2 z-50 mt-2 w-56 max-sm:w-32 rounded-2xl shadow-lg bg-white border border-gray-200 p-4 max-sm:p-2"
+        class="absolute left-1/2 -translate-x-1/2 z-50 mt-2 rounded-2xl shadow-lg bg-white border border-gray-200 p-4 max-sm:p-2"
+        :class="classCustom"
       >
         <slot />
         <div
@@ -31,6 +32,12 @@ const wrapper = ref(null);
 const popover = ref(null);
 const position = ref({ left: 0 });
 
+const props = defineProps({
+  classCustom: {
+    type: String,
+    default: "",
+  },
+});
 const adjustPosition = () => {
   const el = popover.value;
   if (!el) return;

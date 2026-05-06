@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,13 +17,27 @@ class VerifyUserVip
     public function handle(Request $request, Closure $next): Response
     {
         $user = Auth::user();
-        $isVip = $user
-            && $user->role === User::ROLE_VIP
-            && $user->vip_expired_at
-            && $user->vip_expired_at->isFuture();
+        
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
 
-        if (!$isVip) {
-            return response()->json(['error' => 'User is not VIP'], 403);
+        if (!$user->isVip()) {
+            $vipStatus = $user->getVipStatus();
+            
+            if ($user->hasUsedTrial() && !$user->isTrialActive()) {
+                return response()->json([
+                    'error' => 'VIP trial has expired',
+                    'vip_status' => $vipStatus,
+                    'message' => 'Your 3-day VIP trial has ended. Upgrade to continue enjoying VIP features.'
+                ], 403);
+            }
+
+            return response()->json([
+                'error' => 'User is not VIP',
+                'vip_status' => $vipStatus,
+                'message' => 'This feature requires VIP access.'
+            ], 403);
         }
 
         return $next($request);

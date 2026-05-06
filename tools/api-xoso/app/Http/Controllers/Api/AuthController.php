@@ -24,12 +24,16 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        $user->startVipTrial();
+        $user->refresh();
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Registration successful',
+            'message' => 'Registration successful. You get 3 days VIP trial!',
             'user' => $user,
             'token' => $token,
+            'vip_status' => $user->getVipStatus(),
         ], 201);
     }
 
@@ -54,6 +58,7 @@ class AuthController extends Controller
             'message' => 'Login successful',
             'user' => $user,
             'token' => $token,
+            'vip_status' => $user->getVipStatus(),
         ]);
     }
 
@@ -66,6 +71,9 @@ class AuthController extends Controller
 
     public function user(Request $request)
     {
-        return response()->json(['user' => $request->user()]);
+        return response()->json([
+            'user' => $request->user(),
+            'vip_status' => $request->user()->getVipStatus(),
+        ]);
     }
 }

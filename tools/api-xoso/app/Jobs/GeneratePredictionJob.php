@@ -52,8 +52,9 @@ class GeneratePredictionJob implements ShouldQueue
             1.25
         );
         $vipTop = collect($vipFromShared);
+        $vipTargetCount = 8;
         foreach ($vipTopCandidates as $candidate) {
-            if ($vipTop->count() >= 5) {
+            if ($vipTop->count() >= $vipTargetCount) {
                 break;
             }
             if ($sharedTopByNumber->has($candidate['number']) || $vipTop->pluck('number')->contains($candidate['number'])) {
@@ -61,7 +62,7 @@ class GeneratePredictionJob implements ShouldQueue
             }
             $vipTop->push($candidate);
         }
-        $vipTop = $vipTop->take(5)->values();
+        $vipTop = $vipTop->take($vipTargetCount)->values();
 
         $freeDbTop = $this->pickDiversifiedNumbers(
             $service->rankDb($stats)->map(fn($item) => [
@@ -84,19 +85,13 @@ class GeneratePredictionJob implements ShouldQueue
         $explains = $vipTop->map(fn($item) => $explainService->explainLoto((object) $item));
         $explainsDb = $vipDbTop->map(fn($item) => $explainService->explainDb((object) $item));
 
-        $vipXien2 = $this->buildXien($vipTop, 2, 5);
-        $vipXien3 = $this->buildXien($vipTop, 3, 5);
-        $vipXien4 = $this->buildXien($vipTop, 4, 3);
-        $vipThreeDigits = $this->buildThreeDigitsPrediction(3);
+        $vipThreeDigits = $this->buildThreeDigitsPrediction(3, $vipDbTop);
 
         $algorithms = [
             'ranking' => $freeTop->values(),
             'vip_ranking' => $explains,
             'vip_db_ranking' => $explainsDb,
             'db_ranking' => $freeDbTop->values(),
-            'vip_xien_2' => $vipXien2,
-            'vip_xien_3' => $vipXien3,
-            'vip_xien_4' => $vipXien4,
             'vip_3_cang' => $vipThreeDigits,
         ];
 
@@ -140,6 +135,45 @@ class GeneratePredictionJob implements ShouldQueue
                 $penalty = ($recentPenalty[$number] ?? 0) * 0.08 * $vipPenaltyMultiplier;
 
                 $isDbAlgo = str_contains($algorithm, 'db');
+
+                // Confidence is a probability-like score (0..100) derived from gap + cycle stats.
+                // It is intentionally *independent* from the diversification penalties so it can be explained to users.
+                if ($isDbAlgo) {
+                    $gapRatio = ((float) ($item['max_gap_db'] ?? 0)) > 0
+                        ? ((float) ($item['current_gap_db'] ?? 0)) / ((float) ($item['max_gap_db'] ?? 0))
+                        : 0.0;
+                    $z = 0.0;
+                    $std = (float) ($item['std_gap_db'] ?? 0);
+                    $avg = (float) ($item['avg_gap_db'] ?? 0);
+                    $cur = (float) ($item['current_gap_db'] ?? 0);
+                    if ($std > 0 && $avg > 0) {
+                        $z = ($cur - $avg) / $std;
+                    }
+                    $sigmoid = 1 / (1 + exp(-$z));
+                    $confidence = (0.75 * $sigmoid) + (0.25 * min($gapRatio, 1.0));
+                } else {
+                    $gapRatio = ((float) ($item['max_gap'] ?? 0)) > 0
+                        ? ((float) ($item['current_gap'] ?? 0)) / ((float) ($item['max_gap'] ?? 0))
+                        : 0.0;
+                    $z = 0.0;
+                    $std = (float) ($item['std_gap'] ?? 0);
+                    $avg = (float) ($item['avg_gap'] ?? 0);
+                    $cur = (float) ($item['current_gap'] ?? 0);
+                    if ($std > 0 && $avg > 0) {
+                        $z = ($cur - $avg) / $std;
+                    }
+                    $sigmoid = 1 / (1 + exp(-$z));
+
+                    $short = (float) ($item['total_count_7_days'] ?? 0);
+                    $mid = max(((float) ($item['total_count_30_days'] ?? 0)) / 4.0, 1.0);
+                    $trend = $mid > 0 ? ($short / $mid) : 0.0;
+
+                    $confidence = (0.65 * $sigmoid)
+                        + (0.25 * (min($trend, 2.0) / 2.0))
+                        + (0.10 * (1.0 - min($gapRatio, 1.0)));
+                }
+                $item['confidence'] = round(min(max($confidence, 0.0), 1.0) * 100, 2);
+
                 $hitSet = $isDbAlgo ? $dbHitNumbers : $hitNumbers;
                 $missYesterdayPenalty = $hitSet->contains($number) ? 0 : 0.15 * $vipPenaltyMultiplier;
 
@@ -221,9 +255,16 @@ class GeneratePredictionJob implements ShouldQueue
                 })
                 ->sum();
 
+            $comboConfidence = collect($combo)
+                ->map(function ($num) use ($baseNumbers) {
+                    return (float) ($baseNumbers->firstWhere('number', $num)['confidence'] ?? 0);
+                })
+                ->avg();
+
             $scored[] = [
                 'numbers' => $combo,
                 'score' => round($comboScore, 4),
+                'confidence' => $comboConfidence === null ? null : round((float) $comboConfidence, 2),
             ];
         }
 
@@ -246,52 +287,60 @@ class GeneratePredictionJob implements ShouldQueue
         return $result;
     }
 
-    private function buildThreeDigitsPrediction(int $limit): array
+    private function buildThreeDigitsPrediction(int $limit, $vipDbTop = []): array
     {
-        $rows = Number::query()
-            ->join('results', 'results.id', '=', 'numbers.result_id')
-            ->where('results.region', ModelsNumber::REGION_MB)
-            ->where('numbers.prize', 'db')
-            ->whereDate('results.date', '>=', now()->subDays(180)->toDateString())
-            ->orderByDesc('results.date')
-            ->get(['numbers.raw_number', 'results.date']);
-
-        if ($rows->isEmpty()) {
+        $predictions = [];
+        
+        if (empty($vipDbTop)) {
             return [];
         }
 
-        $grouped = [];
-        foreach ($rows as $row) {
-            $raw = preg_replace('/\D/', '', (string) $row->raw_number);
-            $three = substr(str_pad($raw, 3, '0', STR_PAD_LEFT), -3);
-            if ($three === false || $three === '') {
-                continue;
-            }
-            if (!isset($grouped[$three])) {
-                $grouped[$three] = ['freq' => 0, 'last_date' => null];
-            }
-            $grouped[$three]['freq']++;
-            $grouped[$three]['last_date'] = $grouped[$three]['last_date'] ?? $row->date;
-        }
+        $dbNumbers = collect($vipDbTop)->pluck('number')->filter()->toArray();
 
-        $predictions = [];
-        $maxFreq = max(array_column($grouped, 'freq'));
-        foreach ($grouped as $three => $data) {
-            $gapDays = Carbon::parse($data['last_date'])->diffInDays(now());
-            $freqRatio = $maxFreq > 0 ? $data['freq'] / $maxFreq : 0;
-            $gapScore = min($gapDays / 20, 1);
-            $score = (0.6 * $gapScore) + (0.4 * (1 - $freqRatio));
+        foreach ($dbNumbers as $dbNum) {
+            $dbNumStr = str_pad((string)$dbNum, 2, '0', STR_PAD_LEFT);
+            
+            for ($prefix = 0; $prefix <= 9; $prefix++) {
+                $threeDigits = $prefix . $dbNumStr;
+                
+                $rows = Number::query()
+                    ->join('results', 'results.id', '=', 'numbers.result_id')
+                    ->where('results.region', ModelsNumber::REGION_MB)
+                    ->where('numbers.prize', 'db')
+                    ->whereDate('results.date', '>=', now()->subDays(180)->toDateString())
+                    ->whereRaw('RIGHT(LPAD(REPLACE(numbers.raw_number, "[^0-9]", ""), 3, "0"), 3) = ?', [$threeDigits])
+                    ->orderByDesc('results.date')
+                    ->get(['results.date']);
 
-            $predictions[] = [
-                'number' => $three,
-                'score' => round($score, 4),
-                'last_hit_days' => $gapDays,
-                'freq_180' => $data['freq'],
-            ];
+                $freq = $rows->count();
+                $lastDate = $rows->first()?->date;
+                $gapDays = $lastDate ? Carbon::parse($lastDate)->diffInDays(now()) : 999;
+
+                $freqScore = min($freq / 5, 1);
+                $gapScore = min($gapDays / 30, 1);
+                $score = (0.5 * $freqScore) + (0.5 * $gapScore);
+
+                $predictions[] = [
+                    'number' => $threeDigits,
+                    'score' => round($score, 4),
+                    'confidence' => round($score * 100, 2),
+                    'last_hit_days' => $gapDays,
+                    'freq_180' => $freq,
+                    'based_on_db' => $dbNumStr,
+                ];
+            }
         }
 
         usort($predictions, fn($a, $b) => $b['score'] <=> $a['score']);
-        return array_slice($predictions, 0, $limit);
+        $uniquePredictions = [];
+        $seen = [];
+        foreach ($predictions as $p) {
+            if (!in_array($p['number'], $seen)) {
+                $seen[] = $p['number'];
+                $uniquePredictions[] = $p;
+            }
+        }
+        return array_slice($uniquePredictions, 0, $limit);
     }
 
     private function normalizeNumber($number): ?string

@@ -5,61 +5,23 @@
     >
       <div class="lg:w-1/2 xl:w-5/12 p-6 sm:p-12">
         <div>
-          <img
-            src="https://storage.googleapis.com/devitary-image-host.appspot.com/15846435184459982716-LogoMakr_7POjrN.png"
-            class="w-32 mx-auto"
-          />
+          <div class="w-24 h-24 bg-red-500 rounded-xl mx-auto flex items-center justify-center">
+            <span class="text-white text-4xl font-bold">XO</span>
+          </div>
         </div>
-        <div class="mt-12 flex flex-col items-center">
-          <h1 class="text-2xl xl:text-3xl font-extrabold">Sign Up</h1>
+        <div class="mt-8 flex flex-col items-center">
+          <h1 class="text-2xl xl:text-3xl font-extrabold">Đăng ký</h1>
+          <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4 w-full max-w-xs">
+            <p class="text-yellow-700 text-sm text-center">
+              🎁 Đăng ký ngay để nhận <strong>3 ngày VIP MIỄN PHÍ</strong>!
+            </p>
+          </div>
           <div class="w-full flex-1 mt-8">
-            <div class="flex flex-col items-center">
-              <button
-                class="w-full max-w-xs font-bold shadow-sm rounded-lg py-3 bg-indigo-100 text-gray-800 flex items-center justify-center transition-all duration-300 ease-in-out focus:outline-none hover:shadow focus:shadow-sm focus:shadow-outline"
-              >
-                <div class="bg-white p-2 rounded-full">
-                  <svg class="w-4" viewBox="0 0 533.5 544.3">
-                    <path
-                      d="M533.5 278.4c0-18.5-1.5-37.1-4.7-55.3H272.1v104.8h147c-6.1 33.8-25.7 63.7-54.4 82.7v68h87.7c51.5-47.4 81.1-117.4 81.1-200.2z"
-                      fill="#4285f4"
-                    />
-                    <path
-                      d="M272.1 544.3c73.4 0 135.3-24.1 180.4-65.7l-87.7-68c-24.4 16.6-55.9 26-92.6 26-71 0-131.2-47.9-152.8-112.3H28.9v70.1c46.2 91.9 140.3 149.9 243.2 149.9z"
-                      fill="#34a853"
-                    />
-                    <path
-                      d="M119.3 324.3c-11.4-33.8-11.4-70.4 0-104.2V150H28.9c-38.6 76.9-38.6 167.5 0 244.4l90.4-70.1z"
-                      fill="#fbbc04"
-                    />
-                    <path
-                      d="M272.1 107.7c38.8-.6 76.3 14 104.4 40.8l77.7-77.7C405 24.6 339.7-.8 272.1 0 169.2 0 75.1 58 28.9 150l90.4 70.1c21.5-64.5 81.8-112.4 152.8-112.4z"
-                      fill="#ea4335"
-                    />
-                  </svg>
-                </div>
-                <span class="ml-4"> Sign Up with Google </span>
-              </button>
-
-              <button
-                class="w-full max-w-xs font-bold shadow-sm rounded-lg py-3 bg-indigo-100 text-gray-800 flex items-center justify-center transition-all duration-300 ease-in-out focus:outline-none hover:shadow focus:shadow-sm focus:shadow-outline mt-5"
-              >
-                <div class="bg-white p-1 rounded-full">
-                  <svg class="w-6" viewBox="0 0 32 32">
-                    <path
-                      fill-rule="evenodd"
-                      d="M16 4C9.371 4 4 9.371 4 16c0 5.3 3.438 9.8 8.207 11.387.602.11.82-.258.82-.578 0-.286-.011-1.04-.015-2.04-3.34.723-4.043-1.609-4.043-1.609-.547-1.387-1.332-1.758-1.332-1.758-1.09-.742.082-.726.082-.726 1.203.086 1.836 1.234 1.836 1.234 1.07 1.836 2.808 1.305 3.492 1 .11-.777.422-1.305.762-1.605-2.664-.301-5.465-1.332-5.465-5.93 0-1.313.469-2.383 1.234-3.223-.121-.3-.535-1.523.117-3.175 0 0 1.008-.32 3.301 1.23A11.487 11.487 0 0116 9.805c1.02.004 2.047.136 3.004.402 2.293-1.55 3.297-1.23 3.297-1.23.656 1.652.246 2.875.12 3.175.77.84 1.231 1.91 1.231 3.223 0 4.61-2.804 5.621-5.476 5.922.43.367.812 1.101.812 2.219 0 1.605-.011 2.898-.011 3.293 0 .32.214.695.824.578C24.566 25.797 28 21.3 28 16c0-6.629-5.371-12-12-12z"
-                    />
-                  </svg>
-                </div>
-                <span class="ml-4"> Sign Up with GitHub </span>
-              </button>
-            </div>
-
-            <div class="my-12 border-b text-center">
+            <div class="my-8 border-b text-center">
               <div
                 class="leading-none px-2 inline-block text-sm text-gray-600 tracking-wide font-medium bg-white transform translate-y-1/2"
               >
-                Or sign up with e-mail
+                Đăng ký với email
               </div>
             </div>
 
@@ -68,7 +30,7 @@
                 v-model="form.name"
                 class="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white"
                 type="text"
-                placeholder="Full Name"
+                placeholder="Họ tên"
                 required
               />
               <input
@@ -82,52 +44,58 @@
                 v-model="form.password"
                 class="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white mt-5"
                 type="password"
-                placeholder="Password"
+                placeholder="Mật khẩu"
                 required
               />
               <input
                 v-model="form.confirmPassword"
                 class="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white mt-5"
                 type="password"
-                placeholder="Confirm Password"
+                placeholder="Xác nhận mật khẩu"
                 required
               />
               <div v-if="error" class="text-red-500 text-sm mt-4">{{ error }}</div>
               <button
                 type="submit"
-                class="mt-5 tracking-wide font-semibold bg-indigo-500 text-gray-100 w-full py-4 rounded-lg hover:bg-indigo-700 transition-all duration-300 ease-in-out flex items-center justify-center focus:shadow-outline focus:outline-none"
+                class="mt-5 tracking-wide font-semibold bg-red-500 text-white w-full py-4 rounded-lg hover:bg-red-600 transition-all duration-300 ease-in-out flex items-center justify-center focus:shadow-outline focus:outline-none"
               >
-                <svg
-                  class="w-6 h-6 -ml-2"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                  <circle cx="8.5" cy="7" r="4" />
-                  <path d="M20 8v6M23 11h-6" />
-                </svg>
-                <span class="ml-3"> Sign Up </span>
+                <span class="ml-3"> Đăng ký (3 ngày VIP miễn phí) </span>
               </button>
               <p class="mt-6 text-xs text-gray-600 text-center">
-                Already have an account?
+                Đã có tài khoản?
                 <NuxtLink to="/login" class="border-b border-gray-500 border-dotted">
-                  Sign In
+                  Đăng nhập
                 </NuxtLink>
               </p>
             </form>
           </div>
         </div>
       </div>
-      <div class="flex-1 bg-indigo-100 text-center hidden lg:flex">
-        <div
-          class="m-12 xl:m-16 w-full bg-contain bg-center bg-no-repeat"
-          style="
-            background-image: url('https://storage.googleapis.com/devitary-image-host.appspot.com/15848031292911696601-undraw_designer_life_w96d.svg');
-          "
-        ></div>
+      <div class="flex-1 bg-red-50 text-center hidden lg:flex flex-col justify-center p-12">
+        <h2 class="text-3xl font-bold text-red-600 mb-6">Trải nghiệm VIP MIỄN PHÍ!</h2>
+        <div class="text-left space-y-4 max-w-md mx-auto">
+          <div class="flex items-start gap-3">
+            <span class="text-green-500 text-xl">✓</span>
+            <div>
+              <p class="font-semibold">Full bộ số + phân tích</p>
+              <p class="text-gray-600 text-sm">Xem tất cả dự đoán chi tiết</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-green-500 text-xl">✓</span>
+            <div>
+              <p class="font-semibold">Heatmap số</p>
+              <p class="text-gray-600 text-sm">Thống kê xác suất chi tiết</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-green-500 text-xl">✓</span>
+            <div>
+              <p class="font-semibold">Chu kỳ lặp</p>
+              <p class="text-gray-600 text-sm">Phân tích lịch sử trúng</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -152,20 +120,20 @@ const error = ref(null);
 const register = async () => {
   error.value = null;
   if (form.value.password !== form.value.confirmPassword) {
-    error.value = "Passwords do not match.";
+    error.value = "Mật khẩu không khớp.";
     return;
   }
   try {
-    await authStore.register(form.value);
+    await authStore.register(form.value.name, form.value.email, form.value.password, form.value.confirmPassword);
     router.push("/dashboard");
   } catch (err) {
-    error.value = err.message || "Registration failed. Please try again.";
+    error.value = err.message || "Đăng ký thất bại. Vui lòng thử lại.";
     console.error("Registration error:", err);
   }
 };
 
 useHead({
-  title: "Register - Real Estate",
-  meta: [{ name: "description", content: "Register for your real estate account." }],
+  title: "Đăng ký - XoSo AI",
+  meta: [{ name: "description", content: "Đăng ký tài khoản và nhận 3 ngày VIP miễn phí!" }],
 });
 </script>

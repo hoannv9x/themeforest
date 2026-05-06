@@ -203,7 +203,7 @@ onUnmounted(() => {
     >
       Bạn cần đăng nhập để tham gia mini game.
       <NuxtLink to="/register" class="font-semibold underline ml-1"
-        >Đăng ký ng</NuxtLink
+        >Đăng ký ngay</NuxtLink
       >
       hoặc
       <NuxtLink to="/login" class="font-semibold underline ml-1">Đăng nhập</NuxtLink>.

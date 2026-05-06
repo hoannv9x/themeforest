@@ -1,20 +1,22 @@
 <script setup>
+import { useAuthStore } from "~/stores/auth";
+const authStore = useAuthStore();
 const stats = ref([]);
 const predictions = ref([]);
 const yesterdayPredictions = ref(null);
 const numbersMost = ref([]);
 const api = useApi();
 const paramNumberMost = ref({
-  region: 'mb',
+  region: "mb",
 });
 
 onMounted(async () => {
   const data = await api.getStats();
-  stats.value = data.data.filter((i) => i.region == 'mb');
-  
+  stats.value = data.data.filter((i) => i.region == "mb");
+
   const numberData = await api.getMostFrequentNumbers(paramNumberMost.value);
   numbersMost.value = numberData.data;
-  
+
   const predictionsData = await api.getPredictions();
   predictions.value = predictionsData.data;
 
@@ -26,7 +28,7 @@ const handleSelectedDate = async (day) => {
   paramNumberMost.value.day = day;
   const numberData = await api.getMostFrequentNumbers(paramNumberMost.value);
   numbersMost.value = numberData.data;
-}
+};
 </script>
 
 <template>
@@ -41,5 +43,6 @@ const handleSelectedDate = async (day) => {
     </div>
 
     <NumberGrid :data="stats" />
+    <CTA />
   </div>
 </template>

@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AdminUserActionController;
+use App\Http\Controllers\Api\AdminUserController;
+use App\Http\Controllers\Api\AdminResultController;
 use App\Http\Controllers\Api\ApiSubscriptionController;
 use App\Http\Controllers\Api\ApiWebhookController;
 use App\Http\Controllers\Api\NumberStatController;
@@ -10,6 +12,8 @@ use App\Http\Controllers\Api\MiniGameController;
 use App\Http\Controllers\Api\PredictionController;
 use App\Http\Controllers\Api\ResultController;
 use App\Http\Controllers\Api\StatsController;
+use App\Http\Controllers\Api\VipController;
+use App\Http\Middleware\VerifyAdmin;
 use App\Http\Middleware\VerifyUserVip;
 use Illuminate\Support\Facades\Route;
 
@@ -44,11 +48,25 @@ Route::prefix('v1')->group(function () {
         Route::get('/mini-game/me', [MiniGameController::class, 'me']);
         Route::post('/mini-game/predict', [MiniGameController::class, 'predict']);
         Route::post('/mini-game/payout-request', [MiniGameController::class, 'submitPayoutRequest']);
+        
+        Route::get('/vip/status', [VipController::class, 'status']);
+        Route::get('/vip/upsell', [VipController::class, 'upsell']);
+        Route::post('/vip/start-trial', [VipController::class, 'startTrial']);
     });
 
     Route::middleware([VerifyUserVip::class, 'auth:sanctum'])->group(function () {
         Route::get('/vip/predictions', [PredictionController::class, 'todayVip']);
         Route::get('/vip/predictions/yesterday', [PredictionController::class, 'yesterdayVip']);
+    });
+
+    Route::middleware([VerifyAdmin::class, 'auth:sanctum'])->prefix('admin')->group(function () {
+        Route::get('/users', [AdminUserController::class, 'index']);
+        Route::get('/users/{user}', [AdminUserController::class, 'show']);
+        Route::put('/users/{user}', [AdminUserController::class, 'update']);
+
+        Route::get('/results', [AdminResultController::class, 'index']);
+        Route::get('/results/by-date/{date}', [AdminResultController::class, 'showByDate']);
+        Route::put('/results/by-date/{date}', [AdminResultController::class, 'upsertByDate']);
     });
 
     Route::middleware('signed')->group(function () {

@@ -10,7 +10,7 @@
         :class="getColor(item)"
         :title="`Số ${item.number} - Gan: ${item.current_gap}`"
       >
-        <BasePopover>
+        <BasePopover classCustom="w-56 max-sm:w-32">
           <template #trigger>
             <button class="text-center w-full h-full aspect-square rounded-lg text-sm font-bold cursor-pointer transition hover:scale-105">
               {{ item.number }}

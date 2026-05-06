@@ -2,7 +2,7 @@
   <div class="bg-white border rounded-xl p-6 space-y-4">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
       <div>
-        <h3 class="text-lg font-bold">Gợi ý hôm qua ({{ data?.date || "--" }})</h3>
+        <h3 class="text-lg font-bold">Gợi ý <span :class="{'max-sm:hidden': data?.date}">hôm qua</span> ({{ data?.date || "--" }})</h3>
         <p class="text-sm text-gray-600">Đánh dấu số đã về theo kết quả thực tế.</p>
       </div>
       <div class="text-sm font-semibold text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">

@@ -22,10 +22,16 @@ class ExplainService
       'z_score_db' => round($z, 2),
     ];
 
+    $confidence = isset($item->confidence)
+      ? (float) $item->confidence
+      : (0.75 * (1 / (1 + exp(-$z))) + 0.25 * min($gapRatio, 1.0)) * 100;
+
     return [
       'number' => $item->number,
       'label' => $this->getLabel($gapRatio, $z, $item),
-      // 'signals' => $signals,
+      'confidence' => round(max(0.0, min(100.0, $confidence)), 2),
+      'last_hit_days' => (int) ($item->current_gap_db ?? 0),
+      'signals' => $signals,
       'message' => $this->buildMessage($item, $gapRatio, $z),
     ];
   }
@@ -157,9 +163,15 @@ class ExplainService
 
     $trend = $this->calculateTrend($item);
 
+    $confidence = isset($item->confidence)
+      ? (float) $item->confidence
+      : (0.65 * (1 / (1 + exp(-$z))) + 0.25 * (min($trend, 2.0) / 2.0) + 0.10 * (1.0 - min($gapRatio, 1.0))) * 100;
+
     return [
       'number' => $item->number,
       'label' => $this->getLotoLabel($gapRatio, $z, $trend, $item),
+      'confidence' => round(max(0.0, min(100.0, $confidence)), 2),
+      'last_hit_days' => (int) ($item->current_gap ?? 0),
       'signals' => [
         'gap_ratio' => round($gapRatio, 2),
         'current_gap' => $item->current_gap,

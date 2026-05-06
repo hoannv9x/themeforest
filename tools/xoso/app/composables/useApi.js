@@ -23,6 +23,9 @@ export const useApi = () => {
 
     getVipPredictions: () => $api.get('/v1/vip/predictions'),
     getVipYesterdayPredictions: () => $api.get('/v1/vip/predictions/yesterday'),
+    getVipStatus: () => $api.get('/v1/vip/status'),
+    getVipUpsell: () => $api.get('/v1/vip/upsell'),
+    startVipTrial: () => $api.post('/v1/vip/start-trial'),
 
     getMe: () => $api.get('/v1/me'),
     getPaymentPlans: () => $api.get('/v1/payments/plans'),
@@ -36,5 +39,13 @@ export const useApi = () => {
     updateApiWebhook: (id, payload) => $api.put(`/v1/api/webhooks/${id}`, payload),
     deleteApiWebhook: (id) => $api.delete(`/v1/api/webhooks/${id}`),
     markPaymentPaid: (payload) => $api.post(`/v1/payments/bank-notify`, payload),
+
+    adminGetUsers: (params) => $api.get('/v1/admin/users', { params }),
+    adminGetUser: (id) => $api.get(`/v1/admin/users/${id}`),
+    adminUpdateUser: (id, payload) => $api.put(`/v1/admin/users/${id}`, payload),
+
+    adminGetResults: (params) => $api.get('/v1/admin/results', { params }),
+    adminGetResultByDate: (date, params) => $api.get(`/v1/admin/results/by-date/${date}`, { params }),
+    adminUpsertResultByDate: (date, payload) => $api.put(`/v1/admin/results/by-date/${date}`, payload),
   };
 };

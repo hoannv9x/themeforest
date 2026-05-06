@@ -8,7 +8,13 @@ export default {
     "./plugins/**/*.{js,ts}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      backgroundImage: {
+        'logo': 'url("/logo.png")',
+        'logo-medium': 'url("/logo-medium.png")',
+        'logo-small': 'url("/logo-small.png")',
+      },
+    },
   },
   plugins: [],
 }

@@ -62,7 +62,7 @@ class PredictionService
     $dbHits = $dbWithHit->where('is_hit', true)->pluck('number')->values();
 
     return [
-      'date' => $yesterday,
+      'date' => Carbon::parse($yesterday)->format('d-m-Y'),
       'has_result' => (bool) $result,
       'predictions' => [
         'ranking' => [
@@ -272,12 +272,36 @@ class PredictionService
       ->keyBy('algorithm')
       ->toArray();
     $numberCounts = [];
+    $heatmapData = [];
+    $cycleStats = [];
+    $strategySuggestions = [];
+
+    $heatmapAlgos = $vip
+      ? ['vip_ranking', 'vip_db_ranking']
+      : ['ranking', 'db_ranking'];
 
     foreach ($predictions as $algo => $value) {
-      foreach ($value['numbers'] as $data) {
+      if (!in_array($algo, $heatmapAlgos, true)) {
+        continue;
+      }
+      $numbers = $value['numbers'] ?? [];
+      foreach ($numbers as $data) {
         $num = $data['number'] ?? null;
         if ($num !== null) {
-          $numberCounts[$num] = ($numberCounts[$num] ?? 0) + 1;
+          $confidence = isset($data['confidence']) ? (float) $data['confidence'] : 1.0;
+          $numberCounts[$num] = ($numberCounts[$num] ?? 0) + $confidence;
+          
+          if ($vip) {
+            $heatmapData[$num] = [
+              'number' => $num,
+              'confidence' => $confidence,
+              'score' => $data['score'] ?? 0,
+              'signals' => $data['signals'] ?? null,
+              'last_hit_days' => $data['last_hit_days'] ?? null,
+              'label' => $data['label'] ?? null,
+              'message' => $data['message'] ?? null,
+            ];
+          }
         }
       }
     }
@@ -288,11 +312,79 @@ class PredictionService
       $predictions = [
         'db_ranking'   => $predictions['vip_db_ranking'] ?? null,
         'ranking' => $predictions['vip_ranking'] ?? null,
-        'xien_2' => $predictions['vip_xien_2'] ?? null,
-        'xien_3' => $predictions['vip_xien_3'] ?? null,
-        'xien_4' => $predictions['vip_xien_4'] ?? null,
         'three_cang' => $predictions['vip_3_cang'] ?? null,
       ];
+      
+      $stats = NumberStat::where('region', $region)->get();
+      $statsByNumber = $stats->keyBy('number');
+      
+      $cycleStats = $stats->map(function ($stat) {
+        return [
+          'number' => $stat->number,
+          'current_gap' => $stat->current_gap,
+          'max_gap' => $stat->max_gap,
+          'avg_gap' => $stat->avg_gap,
+          'std_gap' => $stat->std_gap,
+          'total_count' => $stat->total_count,
+          'total_count_7_days' => $stat->total_count_7_days,
+          'total_count_30_days' => $stat->total_count_30_days,
+          'current_gap_db' => $stat->current_gap_db,
+          'max_gap_db' => $stat->max_gap_db,
+          'avg_gap_db' => $stat->avg_gap_db,
+          'std_gap_db' => $stat->std_gap_db,
+        ];
+      })->values()->toArray();
+      
+      for ($i = 0; $i <= 99; $i++) {
+        $num = str_pad((string)$i, 2, '0', STR_PAD_LEFT);
+        $stat = $statsByNumber->get($num);
+        $predictionData = $heatmapData[$num] ?? null;
+        
+        $lastHitDate = null;
+        $lastDbHitDate = null;
+        
+        if ($stat) {
+          $recentLotoResult = Result::where('region', $region)
+            ->whereHas('numbers', function ($q) use ($num) {
+              $q->where('number', $num)->whereNotIn('prize', ['db', 'ma_db']);
+            })
+            ->latest('date')
+            ->first();
+          $lastHitDate = $recentLotoResult?->date;
+          
+          $recentDbResult = Result::where('region', $region)
+            ->whereHas('numbers', function ($q) use ($num) {
+              $q->where('number', $num)->where('prize', 'db');
+            })
+            ->latest('date')
+            ->first();
+          $lastDbHitDate = $recentDbResult?->date;
+        }
+        
+        $heatmapData[$num] = [
+          'number' => $num,
+          'confidence' => $predictionData['confidence'] ?? 0,
+          'score' => $predictionData['score'] ?? 0,
+          'signals' => $predictionData['signals'] ?? null,
+          'label' => $predictionData['label'] ?? null,
+          'message' => $predictionData['message'] ?? null,
+          'total_count' => $stat?->total_count ?? 0,
+          'total_count_db' => $stat?->total_count_db ?? 0,
+          'last_hit_date' => $lastHitDate,
+          'last_db_hit_date' => $lastDbHitDate,
+          'current_gap' => $stat?->current_gap ?? 0,
+          'max_gap' => $stat?->max_gap ?? 0,
+          'current_gap_db' => $stat?->current_gap_db ?? 0,
+          'max_gap_db' => $stat?->max_gap_db ?? 0,
+          'avg_gap' => $stat?->avg_gap ?? 0,
+          'std_gap' => $stat?->std_gap ?? 0,
+          'is_in_prediction' => isset($heatmapData[$num]) && isset($predictionData),
+        ];
+      }
+      
+      ksort($heatmapData);
+      
+      $strategySuggestions = $this->generateStrategySuggestions($topNumbers, $cycleStats);
     } else {
       $predictions = [
         'db_ranking'   => $predictions['db_ranking'] ?? null,
@@ -300,9 +392,50 @@ class PredictionService
       ];
     }
 
-    return [
+    $result = [
       'predictions' => $predictions,
       'top_numbers' => $topNumbers
     ];
+    
+    if ($vip) {
+      $result['heatmap'] = $heatmapData;
+      $result['cycle_stats'] = $cycleStats;
+      $result['strategy_suggestions'] = $strategySuggestions;
+      $result['is_vip'] = true;
+    }
+
+    return $result;
+  }
+  
+  private function generateStrategySuggestions($topNumbers, $cycleStats): array
+  {
+    $suggestions = [];
+    
+    $avgConfidence = collect($topNumbers)->avg() ?: 0;
+    
+    if ($avgConfidence > 70) {
+      $suggestions[] = [
+        'type' => 'strong',
+        'title' => 'Đánh mạnh hôm nay',
+        'description' => 'Tỷ lệ xác suất cao, bạn có thể đánh mạnh hơn.',
+        'priority' => 1,
+      ];
+    } elseif ($avgConfidence > 50) {
+      $suggestions[] = [
+        'type' => 'normal',
+        'title' => 'Đánh bình thường',
+        'description' => 'Tỷ lệ xác suất trung bình, hãy đánh theo ngân sách.',
+        'priority' => 2,
+      ];
+    } else {
+      $suggestions[] = [
+        'type' => 'weak',
+        'title' => 'Nên nghỉ hoặc đánh nhẹ',
+        'description' => 'Tỷ lệ xác suất thấp hôm nay, hãy cân nhắc.',
+        'priority' => 3,
+      ];
+    }
+    
+    return $suggestions;
   }
 }
