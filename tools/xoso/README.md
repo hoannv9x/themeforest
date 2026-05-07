@@ -1,75 +1,36 @@
-# Nuxt Minimal Starter
+# XoSo AI (Frontend)
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Ứng dụng Nuxt hiển thị thống kê xổ số, kết quả hằng ngày, gợi ý số (Free/VIP) và trang quản trị nội bộ.
 
-## Setup
+## Tính năng chính
 
-Make sure to install dependencies:
+- Trang chủ: preview số nổi bật, CTA nâng cấp VIP
+- Dashboard: thống kê, tần suất, gợi ý số, lịch sử trúng hôm qua
+- VIP: thanh toán/gói VIP, hiển thị dữ liệu VIP (heatmap 100 số, phân tích, chiến lược)
+- Kết quả: xem kết quả theo ngày/miền
+- Admin: quản lý user và sửa tay result theo ngày khi crawl sai
+
+## Tech stack
+
+- Nuxt 3 + TailwindCSS + Pinia
+- Axios plugin với Bearer token (Sanctum token lưu cookie `sanctum_token`)
+
+## Cấu hình môi trường
+
+- `NUXT_PUBLIC_API_BASE_URL`: base URL API Laravel (mặc định `http://localhost:8989/api`)
+- `NUXT_PUBLIC_SITE_URL`: base URL site để render canonical/SEO (mặc định `http://localhost:3000`)
+
+## Chạy local
 
 ```bash
-# npm
 npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
-```
-
-## Development Server
-
-Start the development server on `http://localhost:3000`:
-
-```bash
-# npm
 npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
+Mặc định chạy ở `http://localhost:3000`.
 
-Build the application for production:
+## Ghi chú SEO
 
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+- Các trang public có meta title/description + canonical
+- Các trang nhạy cảm (`/admin`, `/dashboard`, `/login`, `/register`, API pages) được đặt `noindex`
+- `public/robots.txt` chặn crawl các trang nhạy cảm

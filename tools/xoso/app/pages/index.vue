@@ -1,4 +1,19 @@
 <script setup>
+const url = useRequestURL();
+const canonical = url.origin + url.pathname;
+useSeoMeta({
+  title: 'Trang chủ',
+  description: 'XoSo AI: phân tích xổ số bằng dữ liệu, theo dõi thống kê, lô gan, tần suất và gợi ý số mỗi ngày.',
+  ogTitle: 'XoSo AI - Phân tích xổ số bằng dữ liệu',
+  ogDescription: 'Theo dõi thống kê, lô gan, tần suất và gợi ý số mỗi ngày.',
+  ogUrl: canonical,
+  twitterTitle: 'XoSo AI - Phân tích xổ số bằng dữ liệu',
+  twitterDescription: 'Theo dõi thống kê, lô gan, tần suất và gợi ý số mỗi ngày.',
+});
+useHead({
+  link: [{ rel: 'canonical', href: canonical }],
+});
+
 const stats = ref([]);
 const predictions = ref([]);
 const loading = ref(true);

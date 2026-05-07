@@ -1,3 +1,50 @@
+<script setup>
+const url = useRequestURL();
+const canonical = url.origin + url.pathname;
+useSeoMeta({
+  title: 'Kết quả xổ số',
+  description: 'Xem kết quả xổ số theo ngày và theo miền. Cập nhật nhanh, dễ theo dõi.',
+  ogTitle: 'Kết quả xổ số - XoSo AI',
+  ogDescription: 'Xem kết quả xổ số theo ngày và theo miền. Cập nhật nhanh, dễ theo dõi.',
+  ogUrl: canonical,
+  twitterTitle: 'Kết quả xổ số - XoSo AI',
+  twitterDescription: 'Xem kết quả xổ số theo ngày và theo miền. Cập nhật nhanh, dễ theo dõi.',
+});
+useHead({
+  link: [{ rel: 'canonical', href: canonical }],
+});
+
+const activeTab = ref("xsmb");
+const api = useApi();
+const tabs = [
+  { key: "xsmb", label: "XSMB" },
+  // { key: "xsmn", label: "XSMN" },
+  // { key: "xsmt", label: "XSMT" },
+];
+
+const xsmb = ref([]);
+const xsmn = ref([]);
+const xsmt = ref([]);
+
+async function getResult() {
+  try {
+    const { data } = await api.getResults({
+      is_multi_region: true,
+    });
+
+    xsmb.value = data.mb;
+    xsmn.value = data.mn;
+    xsmt.value = data.mt;
+  } catch (e) {
+    console.log(e);
+  }
+}
+
+onMounted(() => {
+  getResult();
+});
+</script>
+
 <template>
   <div class="max-w-6xl mx-auto p-4">
     <!-- Title -->
@@ -35,40 +82,3 @@
     </div>
   </div>
 </template>
-
-<script setup>
-const activeTab = ref("xsmb");
-const api = useApi();
-const tabs = [
-  { key: "xsmb", label: "XSMB" },
-  // { key: "xsmn", label: "XSMN" },
-  // { key: "xsmt", label: "XSMT" },
-];
-
-/**
- * Mock data (sau này replace bằng API)
- */
-const xsmb = ref([]);
-
-const xsmn = ref([]);
-
-const xsmt = ref([]);
-
-async function getResult() {
-  try {
-    const { data } = await api.getResults({
-      is_multi_region: true,
-    });
-
-    xsmb.value = data.mb;
-    xsmn.value = data.mn;
-    xsmt.value = data.mt;
-  } catch (e) {
-    console.log(e);
-  }
-}
-
-onMounted(() => {
-  getResult();
-});
-</script>

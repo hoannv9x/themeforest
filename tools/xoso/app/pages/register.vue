@@ -17,6 +17,10 @@
             </p>
           </div>
           <div class="w-full flex-1 mt-8">
+            <div class="flex flex-col items-center">
+              <div ref="googleBtn" class="w-full max-w-xs" />
+            </div>
+
             <div class="my-8 border-b text-center">
               <div
                 class="leading-none px-2 inline-block text-sm text-gray-600 tracking-wide font-medium bg-white transform translate-y-1/2"
@@ -106,8 +110,24 @@ import { ref } from "vue";
 import { useRouter } from "#app";
 import { useAuthStore } from "~/stores/auth";
 
+const url = useRequestURL();
+const canonical = url.origin + url.pathname;
+useSeoMeta({
+  title: 'Đăng ký',
+});
+useHead({
+  link: [{ rel: 'canonical', href: canonical }],
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+  script: [
+    { src: 'https://accounts.google.com/gsi/client', async: true, defer: true },
+  ],
+});
+
 const authStore = useAuthStore();
 const router = useRouter();
+const config = useRuntimeConfig();
+
+const googleBtn = ref(null);
 
 const form = ref({
   name: "",
@@ -132,8 +152,58 @@ const register = async () => {
   }
 };
 
-useHead({
-  title: "Đăng ký - XoSo AI",
-  meta: [{ name: "description", content: "Đăng ký tài khoản và nhận 3 ngày VIP miễn phí!" }],
-});
+const initGoogle = async () => {
+  if (!config.public.googleClientId) {
+    return;
+  }
+
+  const waitForGoogle = () =>
+    new Promise((resolve, reject) => {
+      const started = Date.now();
+      const timer = setInterval(() => {
+        if (window.google?.accounts?.id) {
+          clearInterval(timer);
+          resolve(true);
+          return;
+        }
+        if (Date.now() - started > 6000) {
+          clearInterval(timer);
+          reject(new Error('Google SDK not loaded'));
+        }
+      }, 100);
+    });
+
+  try {
+    await waitForGoogle();
+  } catch (e) {
+    return;
+  }
+
+  if (!googleBtn.value) {
+    return;
+  }
+
+  window.google.accounts.id.initialize({
+    client_id: config.public.googleClientId,
+    callback: async (response) => {
+      error.value = null;
+      try {
+        await authStore.loginWithGoogle(response.credential);
+        router.push('/dashboard');
+      } catch (err) {
+        error.value = err.message || 'Google login failed';
+      }
+    },
+  });
+
+  window.google.accounts.id.renderButton(googleBtn.value, {
+    theme: 'outline',
+    size: 'large',
+    text: 'signup_with',
+    shape: 'rectangular',
+    width: 320,
+  });
+};
+
+onMounted(initGoogle);
 </script>

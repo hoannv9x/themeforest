@@ -1,4 +1,14 @@
 <script setup>
+const url = useRequestURL();
+const canonical = url.origin + url.pathname;
+useSeoMeta({
+  title: 'Dashboard',
+});
+useHead({
+  link: [{ rel: 'canonical', href: canonical }],
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+});
+
 import { useAuthStore } from "~/stores/auth";
 const authStore = useAuthStore();
 const stats = ref([]);

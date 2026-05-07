@@ -21,12 +21,15 @@ class Payment extends Model
         'bank_account_number',
         'bank_name',
         'status',
+        'manual_review_status',
+        'manual_review_requested_at',
         'paid_at',
         'meta',
     ];
 
     protected $casts = [
         'paid_at' => 'datetime',
+        'manual_review_requested_at' => 'datetime',
         'meta' => 'array',
     ];
 

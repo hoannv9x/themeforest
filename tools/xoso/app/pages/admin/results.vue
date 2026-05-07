@@ -3,6 +3,16 @@ definePageMeta({
   middleware: ['admin'],
 });
 
+const url = useRequestURL();
+const canonical = url.origin + url.pathname;
+useSeoMeta({
+  title: 'Admin - Results',
+});
+useHead({
+  link: [{ rel: 'canonical', href: canonical }],
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+});
+
 const api = useApi();
 
 const loading = ref(false);

@@ -82,15 +82,15 @@ class PaymentService
 
     public function notifyManualTransferCompleted(Payment $payment): Payment
     {
-        if (($payment->meta['manual_review_requested_at'] ?? null) === null) {
-            $payment->update([
-                'meta' => array_merge($payment->meta ?? [], [
-                    'manual_review_requested_at' => now()->toDateTimeString(),
-                ]),
-            ]);
-        }
+        $payment->update([
+            'manual_review_status' => 'requested',
+            'manual_review_requested_at' => now(),
+            'meta' => array_merge($payment->meta ?? [], [
+                'manual_review_requested_at' => now()->toDateTimeString(),
+            ]),
+        ]);
 
-        $this->sendManualReviewEmail($payment->fresh('user'));
+        $this->sendAdminEmail($payment->fresh('user'));
 
         return $payment->fresh();
     }
@@ -131,26 +131,10 @@ class PaymentService
     private function sendAdminEmail(Payment $payment): void
     {
         $user = $payment->user;
-        $vipLink = URL::temporarySignedRoute('admin.user.update-role', now()->addDays(7), [
-            'user' => $user->id,
-            'role' => User::ROLE_VIP,
-            'days' => $payment->duration_days,
-        ]);
-        $normalLink = URL::temporarySignedRoute('admin.user.update-role', now()->addDays(7), [
-            'user' => $user->id,
-            'role' => User::ROLE_USER,
-            'days' => 0,
-        ]);
-        $developerLink = URL::temporarySignedRoute('admin.user.update-permission', now()->addDays(7), [
-            'user' => $user->id,
-            'permission' => User::PERMISSION_DEVELOPER,
-            'days' => $payment->duration_days,
-        ]);
-        $userPermissionLink = URL::temporarySignedRoute('admin.user.update-permission', now()->addDays(7), [
-            'user' => $user->id,
-            'permission' => User::PERMISSION_USER,
-            'days' => 0,
-        ]);
+        $vipLink = config('constant.url_frontend').'/admin/payments?payment='.$payment->id;
+        $normalLink = config('constant.url_frontend').'/admin/payments?payment='.$payment->id.'&role='.User::ROLE_USER;
+        $developerLink = config('constant.url_frontend').'/admin/payments?payment='.$payment->id.'&permission='.User::PERMISSION_DEVELOPER;
+        $userPermissionLink = config('constant.url_frontend').'/admin/payments?payment='.$payment->id.'&permission='.User::PERMISSION_USER;
 
         $adminMail = env('ADMIN_PAYMENT_EMAIL', 'adminxosoai@gmail.com');
         $subject = '[XOSO] Thanh toán thành công: '.$user->email;
@@ -167,23 +151,6 @@ class PaymentService
 
         Mail::html($html, function ($message) use ($adminMail, $subject) {
             $message->to($adminMail)->subject($subject);
-        });
-    }
-
-    private function sendManualReviewEmail(Payment $payment): void
-    {
-        $user = $payment->user;
-        $mailTo = env('ADMIN_PAYMENT_EMAIL', 'xosoai@gmail.com');
-        $subject = '[XOSO] Yêu cầu kiểm tra thanh toán: ' . $user->email;
-        $html = "<h2>Yêu cầu kiểm tra thanh toán thành công</h2>
-            <p>Loại gói cài: <strong>{$payment->plan_name}</strong> ({$payment->type})</p>
-            <p>So tiền: <strong>" . number_format($payment->amount) . " VND</strong></p>
-            <p>Nội dung chuyển khoản: <strong>{$payment->transfer_content}</strong></p>
-            <p>Tình trạng: <strong>{$payment->status}</strong></p>
-            <p>Thời gian user xác nhận thanh toán: <strong>" . now()->toDateTimeString() . "</strong></p>";
-
-        Mail::html($html, function ($message) use ($mailTo, $subject) {
-            $message->to($mailTo)->subject($subject);
         });
     }
 }

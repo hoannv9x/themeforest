@@ -47,5 +47,9 @@ export const useApi = () => {
     adminGetResults: (params) => $api.get('/v1/admin/results', { params }),
     adminGetResultByDate: (date, params) => $api.get(`/v1/admin/results/by-date/${date}`, { params }),
     adminUpsertResultByDate: (date, payload) => $api.put(`/v1/admin/results/by-date/${date}`, payload),
+
+    adminGetPayments: (params) => $api.get('/v1/admin/payments', { params }),
+    adminGetPayment: (id) => $api.get(`/v1/admin/payments/${id}`),
+    adminApprovePayment: (id) => $api.post(`/v1/admin/payments/${id}/approve`),
   };
 };

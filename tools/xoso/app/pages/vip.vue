@@ -1,4 +1,19 @@
 <script setup>
+const url = useRequestURL();
+const canonical = url.origin + url.pathname;
+useSeoMeta({
+  title: 'VIP',
+  description: 'Nâng cấp VIP để xem đầy đủ bộ số + phân tích, heatmap 100 số, thống kê xác suất và gợi ý chiến lược.',
+  ogTitle: 'VIP - XoSo AI',
+  ogDescription: 'Nâng cấp VIP để xem đầy đủ bộ số + phân tích, heatmap 100 số, thống kê xác suất và gợi ý chiến lược.',
+  ogUrl: canonical,
+  twitterTitle: 'VIP - XoSo AI',
+  twitterDescription: 'Nâng cấp VIP để xem đầy đủ bộ số + phân tích, heatmap 100 số, thống kê xác suất và gợi ý chiến lược.',
+});
+useHead({
+  link: [{ rel: 'canonical', href: canonical }],
+});
+
 import { useAuthStore } from "~/stores/auth";
 const { formatDate } = useFormatters();
 
@@ -11,6 +26,8 @@ const activePayment = ref(null);
 const paymentHistory = ref([]);
 const qrContent = ref("");
 const pollTimer = ref(null);
+const countdownTimer = ref(null);
+const nowTick = ref(Date.now());
 const predictions = ref(null);
 const yesterdayPredictions = ref(null);
 const err = ref(null);
@@ -104,11 +121,76 @@ async function completePayment() {
     activePayment.value = response.data.payment;
     await fetchPaymentHistory();
   } catch (e) {
+    if (e?.response?.status === 429) {
+      const retry = e?.response?.data?.retry_after_seconds;
+      if (typeof retry === 'number') {
+        err.value = e?.response?.data?.message || 'Vui lòng đợi trước khi resend.';
+      } else {
+        err.value = e?.response?.data?.message || 'Không gửi được yêu cầu hoàn tất.';
+      }
+      return;
+    }
     err.value = e?.response?.data?.message || "Không gửi được yêu cầu hoàn tất.";
   } finally {
     completePaymentLoading.value = false;
   }
 }
+
+const manualReviewRemainingSeconds = computed(() => {
+  if (!activePayment.value) return 0;
+  if (activePayment.value.status === 'paid') return 0;
+  if (activePayment.value.manual_review_status !== 'requested') return 0;
+  if (!activePayment.value.manual_review_requested_at) return 0;
+
+  const requestedAtMs = new Date(activePayment.value.manual_review_requested_at).getTime();
+  const nextAllowedMs = requestedAtMs + 5 * 60 * 1000;
+  const diffMs = nextAllowedMs - nowTick.value;
+  return Math.max(0, Math.ceil(diffMs / 1000));
+});
+
+const manualReviewCanResend = computed(() => manualReviewRemainingSeconds.value === 0);
+
+const manualReviewCountdownText = computed(() => {
+  const s = manualReviewRemainingSeconds.value;
+  const mm = String(Math.floor(s / 60)).padStart(2, '0');
+  const ss = String(s % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+});
+
+const paymentStatusLabel = computed(() => {
+  if (!activePayment.value) return '';
+  if (activePayment.value.status === 'paid') return 'Đã thanh toán';
+  if (activePayment.value.manual_review_status === 'requested') return 'Đã gửi yêu cầu hoàn tất';
+  return 'Chờ thanh toán';
+});
+
+const startCountdown = () => {
+  if (countdownTimer.value) {
+    clearInterval(countdownTimer.value);
+    countdownTimer.value = null;
+  }
+
+  if (!activePayment.value) return;
+  if (activePayment.value.status === 'paid') return;
+  if (activePayment.value.manual_review_status !== 'requested') return;
+
+  countdownTimer.value = setInterval(() => {
+    nowTick.value = Date.now();
+    if (manualReviewRemainingSeconds.value === 0) {
+      clearInterval(countdownTimer.value);
+      countdownTimer.value = null;
+    }
+  }, 1000);
+};
+
+watch(
+  () => [activePayment.value?.manual_review_status, activePayment.value?.manual_review_requested_at, activePayment.value?.status],
+  () => {
+    nowTick.value = Date.now();
+    startCountdown();
+  },
+  { immediate: true }
+);
 
 function beginPolling() {
   stopPolling();
@@ -121,6 +203,7 @@ function beginPolling() {
       await authStore.fetchMe();
       await getVipPredictions();
       await getVipYesterdayPredictions();
+      await fetchPaymentHistory();
     }
   }, 5000);
 }
@@ -137,6 +220,12 @@ onMounted(async () => {
 });
 
 onUnmounted(() => stopPolling());
+onUnmounted(() => {
+  if (countdownTimer.value) {
+    clearInterval(countdownTimer.value);
+    countdownTimer.value = null;
+  }
+});
 </script>
 
 <template>
@@ -241,10 +330,12 @@ onUnmounted(() => stopPolling());
               :class="
                 activePayment.status === 'paid'
                   ? 'text-green-600 font-semibold'
+                  : activePayment.manual_review_status === 'requested'
+                  ? 'text-blue-600 font-semibold'
                   : 'text-yellow-600'
               "
             >
-              {{ activePayment.status === "paid" ? "Đã thanh toán" : "Chờ thanh toán" }}
+              {{ paymentStatusLabel }}
             </span>
           </p>
         </div>
@@ -252,7 +343,22 @@ onUnmounted(() => stopPolling());
           >Lưu ý: Hãy giữ lại hình ảnh chuyển khoản thành công, để tiện xử lý nếu có bất
           kỳ lỗi nào xảy ra trong quá trình thanh toán!</span
         >
+
+        <div v-if="activePayment.status !== 'paid' && activePayment.manual_review_status === 'requested'" class="mt-4 space-y-2">
+          <div class="text-sm text-gray-600">
+            Có thể gửi lại sau: <span class="font-mono">{{ manualReviewCountdownText }}</span>
+          </div>
+          <button
+            class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold disabled:opacity-50 hover:bg-blue-500 transition"
+            :disabled="completePaymentLoading || !manualReviewCanResend"
+            @click="completePayment"
+          >
+            {{ completePaymentLoading ? "Đang gửi..." : "Resend phiếu yêu cầu hoàn tất" }}
+          </button>
+        </div>
+
         <button
+          v-else
           class="mt-4 w-full bg-yellow-500 text-black py-2 rounded-lg font-semibold disabled:opacity-50 hover:bg-yellow-400 transition"
           :disabled="completePaymentLoading || activePayment.status !== 'pending'"
           @click="completePayment"

@@ -2,6 +2,16 @@
 definePageMeta({
   middleware: ['admin'],
 });
+
+const url = useRequestURL();
+const canonical = url.origin + url.pathname;
+useSeoMeta({
+  title: 'Admin',
+});
+useHead({
+  link: [{ rel: 'canonical', href: canonical }],
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+});
 </script>
 
 <template>
@@ -13,7 +23,7 @@ definePageMeta({
       </p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <NuxtLink
         to="/admin/users"
         class="bg-white rounded-xl p-6 shadow hover:shadow-md transition border border-gray-100"
@@ -33,7 +43,16 @@ definePageMeta({
           Xem và sửa tay kết quả theo ngày khi crawl sai.
         </div>
       </NuxtLink>
+
+      <NuxtLink
+        to="/admin/payments"
+        class="bg-white rounded-xl p-6 shadow hover:shadow-md transition border border-gray-100"
+      >
+        <div class="text-lg font-bold text-gray-900">Quản lý Payment</div>
+        <div class="text-sm text-gray-600 mt-1">
+          Duyệt thanh toán, theo dõi trạng thái và lịch sử request hoàn tất.
+        </div>
+      </NuxtLink>
     </div>
   </div>
 </template>
-

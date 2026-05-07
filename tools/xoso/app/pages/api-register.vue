@@ -1,6 +1,16 @@
 <script setup>
 import { useAuthStore } from "~/stores/auth";
 
+const url = useRequestURL();
+const canonical = url.origin + url.pathname;
+useSeoMeta({
+  title: 'Đăng ký API',
+});
+useHead({
+  link: [{ rel: 'canonical', href: canonical }],
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+});
+
 const api = useApi();
 const authStore = useAuthStore();
 
@@ -12,6 +22,9 @@ const qrContent = ref("");
 const subscription = ref(null);
 const webhooks = ref([]);
 const completePaymentLoading = ref(false);
+const err = ref(null);
+const countdownTimer = ref(null);
+const nowTick = ref(Date.now());
 const webhookForm = ref({
   name: "",
   url: "",
@@ -47,14 +60,84 @@ const createApiPayment = async () => {
 const completePayment = async () => {
   if (!payment.value?.id) return;
   completePaymentLoading.value = true;
+  err.value = null;
   try {
     const response = await api.completePayment(payment.value.id);
     payment.value = response.data.payment;
     await loadData();
+  } catch (e) {
+    if (e?.response?.status === 429) {
+      err.value = e?.response?.data?.message || 'Vui lòng đợi trước khi resend.';
+      return;
+    }
+    err.value = e?.response?.data?.message || e?.message || 'Không gửi được yêu cầu hoàn tất.';
   } finally {
     completePaymentLoading.value = false;
   }
 };
+
+const manualReviewRemainingSeconds = computed(() => {
+  if (!payment.value) return 0;
+  if (payment.value.status === 'paid') return 0;
+  if (payment.value.manual_review_status !== 'requested') return 0;
+  if (!payment.value.manual_review_requested_at) return 0;
+
+  const requestedAtMs = new Date(payment.value.manual_review_requested_at).getTime();
+  const nextAllowedMs = requestedAtMs + 5 * 60 * 1000;
+  const diffMs = nextAllowedMs - nowTick.value;
+  return Math.max(0, Math.ceil(diffMs / 1000));
+});
+
+const manualReviewCanResend = computed(() => manualReviewRemainingSeconds.value === 0);
+
+const manualReviewCountdownText = computed(() => {
+  const s = manualReviewRemainingSeconds.value;
+  const mm = String(Math.floor(s / 60)).padStart(2, '0');
+  const ss = String(s % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+});
+
+const paymentStatusLabel = computed(() => {
+  if (!payment.value) return '';
+  if (payment.value.status === 'paid') return 'Đã thanh toán';
+  if (payment.value.manual_review_status === 'requested') return 'Đã gửi yêu cầu hoàn tất';
+  return 'Chờ thanh toán';
+});
+
+const startCountdown = () => {
+  if (countdownTimer.value) {
+    clearInterval(countdownTimer.value);
+    countdownTimer.value = null;
+  }
+
+  if (!payment.value) return;
+  if (payment.value.status === 'paid') return;
+  if (payment.value.manual_review_status !== 'requested') return;
+
+  countdownTimer.value = setInterval(() => {
+    nowTick.value = Date.now();
+    if (manualReviewRemainingSeconds.value === 0) {
+      clearInterval(countdownTimer.value);
+      countdownTimer.value = null;
+    }
+  }, 1000);
+};
+
+watch(
+  () => [payment.value?.manual_review_status, payment.value?.manual_review_requested_at, payment.value?.status],
+  () => {
+    nowTick.value = Date.now();
+    startCountdown();
+  },
+  { immediate: true }
+);
+
+onUnmounted(() => {
+  if (countdownTimer.value) {
+    clearInterval(countdownTimer.value);
+    countdownTimer.value = null;
+  }
+});
 
 const createWebhook = async () => {
   await api.createApiWebhook(webhookForm.value);
@@ -116,8 +199,39 @@ onMounted(async () => {
         <h2 class="font-semibold">Quét mã QR</h2>
         <img v-if="qrUrl" :src="qrUrl" class="w-64 h-64 border rounded mt-3" />
         <p class="text-sm mt-3"><strong>Nội dung:</strong> {{ payment.transfer_content }}</p>
+        <p class="text-sm mt-2">
+          <strong>Tình trạng:</strong>
+          <span
+            :class="
+              payment.status === 'paid'
+                ? 'text-green-600 font-semibold'
+                : payment.manual_review_status === 'requested'
+                ? 'text-blue-600 font-semibold'
+                : 'text-yellow-600'
+            "
+          >
+            {{ paymentStatusLabel }}
+          </span>
+        </p>
+
+        <p v-if="err" class="text-red-600 text-sm mt-2">{{ err }}</p>
+
+        <div v-if="payment.status !== 'paid' && payment.manual_review_status === 'requested'" class="mt-4 space-y-2">
+          <div class="text-sm text-gray-600">
+            Có thể gửi lại sau: <span class="font-mono">{{ manualReviewCountdownText }}</span>
+          </div>
+          <button
+            class="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 w-full"
+            :disabled="completePaymentLoading || !manualReviewCanResend"
+            @click="completePayment"
+          >
+            {{ completePaymentLoading ? "Đang gửi..." : "Resend phiếu yêu cầu hoàn tất" }}
+          </button>
+        </div>
+
         <button
-          class="mt-4 bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+          v-else
+          class="mt-4 bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 w-full"
           :disabled="completePaymentLoading || payment.status !== 'pending'"
           @click="completePayment"
         >

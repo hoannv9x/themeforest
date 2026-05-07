@@ -102,7 +102,7 @@ watch(
               class="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg"
             >
               <img
-                src="https://i.pravatar.cc/30"
+                :src="authStore.user.avatar_url || 'https://i.pravatar.cc/30'"
                 class="w-6 h-6 rounded-full max-sm:w-4 max-sm:h-4 object-cover"
               />
               <span class="max-sm:hidden">{{ authStore.user.name }}</span>
@@ -174,8 +174,8 @@ watch(
       >
         Admin
       </NuxtLink>
-      <NuxtLink to="/login" class="text-sm sm:hidden block px-4 py-2">Đăng nhập</NuxtLink>
-      <NuxtLink to="/register" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm sm:hidden block">
+      <NuxtLink v-if="!authStore.isAuthenticated" to="/login" class="text-sm sm:hidden block px-4 py-2">Đăng nhập</NuxtLink>
+      <NuxtLink v-if="!authStore.isAuthenticated" to="/register" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm sm:hidden block">
         Đăng ký (3 ngày VIP miễn phí)
       </NuxtLink>
       <!-- <NuxtLink to="/api-register" class="block py-2 text-blue-600" @click="closeMobileMenu">API</NuxtLink> -->

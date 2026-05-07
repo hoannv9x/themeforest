@@ -27,6 +27,21 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    setAuthPayload(payload) {
+      this.token = payload.token;
+      this.user = payload.user;
+      this.vipStatus = payload.vip_status;
+      this.isAuthenticated = true;
+
+      const tokenCookie = useCookie('sanctum_token', { maxAge: 60 * 60 * 24 * 7, path: '/' });
+      const userCookie = useCookie('user', { maxAge: 60 * 60 * 24 * 7, path: '/' });
+      const vipStatusCookie = useCookie('vip_status', { maxAge: 60 * 60 * 24 * 7, path: '/' });
+
+      tokenCookie.value = this.token;
+      userCookie.value = this.user;
+      vipStatusCookie.value = this.vipStatus;
+    },
+
     setVipStatus(vipStatus) {
       this.vipStatus = vipStatus;
       const vipStatusCookie = useCookie('vip_status', { maxAge: 60 * 60 * 24 * 7, path: '/' });
@@ -51,18 +66,7 @@ export const useAuthStore = defineStore('auth', {
       const { $api } = useNuxtApp();
       try {
         const response = await $api.post('/v1/login', { email, password });
-        this.token = response.data.token;
-        this.user = response.data.user;
-        this.vipStatus = response.data.vip_status;
-        this.isAuthenticated = true;
-
-        const tokenCookie = useCookie('sanctum_token', { maxAge: 60 * 60 * 24 * 7, path: '/' });
-        const userCookie = useCookie('user', { maxAge: 60 * 60 * 24 * 7, path: '/' });
-        const vipStatusCookie = useCookie('vip_status', { maxAge: 60 * 60 * 24 * 7, path: '/' });
-
-        tokenCookie.value = this.token;
-        userCookie.value = this.user;
-        vipStatusCookie.value = this.vipStatus;
+        this.setAuthPayload(response.data);
 
         return response.data;
       } catch (error) {
@@ -88,23 +92,24 @@ export const useAuthStore = defineStore('auth', {
       
       try {
         const response = await $api.post('/v1/register', payload);
-        this.token = response.data.token;
-        this.user = response.data.user;
-        this.vipStatus = response.data.vip_status;
-        this.isAuthenticated = true;
-
-        const tokenCookie = useCookie('sanctum_token', { maxAge: 60 * 60 * 24 * 7, path: '/' });
-        const userCookie = useCookie('user', { maxAge: 60 * 60 * 24 * 7, path: '/' });
-        const vipStatusCookie = useCookie('vip_status', { maxAge: 60 * 60 * 24 * 7, path: '/' });
-
-        tokenCookie.value = this.token;
-        userCookie.value = this.user;
-        vipStatusCookie.value = this.vipStatus;
+        this.setAuthPayload(response.data);
 
         return response.data;
       } catch (error) {
         this.logout();
         throw new Error(error.response?.data?.message || 'Registration failed');
+      }
+    },
+
+    async loginWithGoogle(idToken) {
+      const { $api } = useNuxtApp();
+      try {
+        const response = await $api.post('/v1/auth/google', { id_token: idToken });
+        this.setAuthPayload(response.data);
+        return response.data;
+      } catch (error) {
+        this.logout();
+        throw new Error(error.response?.data?.message || 'Google login failed');
       }
     },
 

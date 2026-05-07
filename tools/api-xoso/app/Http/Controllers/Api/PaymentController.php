@@ -55,7 +55,20 @@ class PaymentController extends Controller
         abort_if($payment->user_id !== $request->user()->id, 403, 'Bạn không có quyền truy cập giao dịch này.');
         abort_if($payment->status !== 'pending', 422, 'Giao dich này không ở trạng thái xử lý.');
 
-        $updated = $this->paymentService->notifyManualTransferCompleted($payment);
+        $lastRequestedAt = $payment->manual_review_requested_at;
+        if ($payment->manual_review_status === 'requested' && $lastRequestedAt) {
+            $nextAllowed = $lastRequestedAt->copy()->addMinutes(5);
+            if (now()->lt($nextAllowed)) {
+                $remainingSeconds = now()->diffInSeconds($nextAllowed);
+                return response()->json([
+                    'message' => 'Vui lòng đợi trước khi gửi lại yêu cầu hoàn tất.',
+                    'retry_after_seconds' => $remainingSeconds,
+                    'manual_review_requested_at' => $lastRequestedAt,
+                ], 429);
+            }
+        }
+
+        $updated = $this->paymentService->notifyManualTransferCompleted($payment->fresh());
 
         return response()->json([
             'message' => 'Đã gửi yêu cầu kiểm tra thanh toán. Chúng tôi sẽ xác nhận thanh toán trong vòng gian ngắn nhất.',

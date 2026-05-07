@@ -18,8 +18,8 @@ class AdminUserActionController extends Controller
         $user->role = $payload['role'];
         if ($payload['role'] !== User::ROLE_VIP) {
             $user->vip_expired_at = null;
-        } elseif (!$user->vip_expired_at) {
-            $user->vip_expired_at = now()->addDays($payload['days']);
+        } else {
+            $user->vip_expired_at = now()->addDays((int) $payload['days']);
         }
         $user->save();
 

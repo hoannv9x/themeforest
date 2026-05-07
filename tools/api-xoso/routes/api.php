@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AdminUserActionController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AdminResultController;
+use App\Http\Controllers\Api\AdminPaymentController;
+use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\ApiSubscriptionController;
 use App\Http\Controllers\Api\ApiWebhookController;
 use App\Http\Controllers\Api\NumberStatController;
@@ -20,6 +22,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/auth/google', [GoogleAuthController::class, 'login']);
     Route::get('/results', [ResultController::class, 'index']);
     Route::get('/results/{date}', [ResultController::class, 'show']);
     
@@ -67,6 +70,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/results', [AdminResultController::class, 'index']);
         Route::get('/results/by-date/{date}', [AdminResultController::class, 'showByDate']);
         Route::put('/results/by-date/{date}', [AdminResultController::class, 'upsertByDate']);
+
+        Route::get('/payments', [AdminPaymentController::class, 'index']);
+        Route::get('/payments/{payment}', [AdminPaymentController::class, 'show']);
+        Route::post('/payments/{payment}/approve', [AdminPaymentController::class, 'approve']);
     });
 
     Route::middleware('signed')->group(function () {

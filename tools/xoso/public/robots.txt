@@ -1,2 +1,9 @@
 User-Agent: *
-Disallow:
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /login
+Disallow: /register
+Disallow: /api-playground
+Disallow: /api-register
+
+Sitemap: /sitemap.xml

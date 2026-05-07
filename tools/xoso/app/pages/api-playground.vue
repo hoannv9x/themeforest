@@ -1,4 +1,14 @@
 <script setup>
+const url = useRequestURL();
+const canonical = url.origin + url.pathname;
+useSeoMeta({
+  title: 'API Playground',
+});
+useHead({
+  link: [{ rel: 'canonical', href: canonical }],
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+});
+
 const api = useApi();
 const resultDate = ref("");
 const resultData = ref(null);
