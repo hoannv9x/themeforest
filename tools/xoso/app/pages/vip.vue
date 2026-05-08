@@ -23,7 +23,6 @@ const loading = ref(false);
 const plans = ref({});
 const selectedPlan = ref("vip_30d");
 const activePayment = ref(null);
-const paymentHistory = ref([]);
 const qrContent = ref("");
 const pollTimer = ref(null);
 const countdownTimer = ref(null);
@@ -33,6 +32,9 @@ const yesterdayPredictions = ref(null);
 const err = ref(null);
 const completePaymentLoading = ref(false);
 const upsellData = ref(null);
+const couponCode = ref("");
+const couponModalOpen = ref(false);
+const cancellingPayment = ref(false);
 
 const isVip = computed(() => authStore.isVip);
 const isTrial = computed(() => authStore.isTrial);
@@ -88,11 +90,6 @@ async function fetchUpsell() {
   }
 }
 
-async function fetchPaymentHistory() {
-  const response = await api.getPaymentHistory();
-  paymentHistory.value = response.data || [];
-}
-
 async function startVipPayment() {
   loading.value = true;
   err.value = null;
@@ -100,10 +97,10 @@ async function startVipPayment() {
     const response = await api.createPayment({
       type: "vip",
       plan_key: selectedPlan.value,
+      coupon_code: couponCode.value || undefined,
     });
     activePayment.value = response.data.payment;
     qrContent.value = response.data.qr_content;
-    await fetchPaymentHistory();
     beginPolling();
   } catch (e) {
     err.value = e?.response?.data?.message || "Không tạo được giao dịch.";
@@ -112,6 +109,19 @@ async function startVipPayment() {
   }
 }
 
+const openCouponModal = () => {
+  couponModalOpen.value = true;
+};
+
+const closeCouponModal = () => {
+  couponModalOpen.value = false;
+};
+
+const applyCoupon = (code) => {
+  couponCode.value = code || "";
+  couponModalOpen.value = false;
+};
+
 async function completePayment() {
   if (!activePayment.value?.id) return;
   completePaymentLoading.value = true;
@@ -119,7 +129,6 @@ async function completePayment() {
   try {
     const response = await api.completePayment(activePayment.value.id);
     activePayment.value = response.data.payment;
-    await fetchPaymentHistory();
   } catch (e) {
     if (e?.response?.status === 429) {
       const retry = e?.response?.data?.retry_after_seconds;
@@ -133,6 +142,20 @@ async function completePayment() {
     err.value = e?.response?.data?.message || "Không gửi được yêu cầu hoàn tất.";
   } finally {
     completePaymentLoading.value = false;
+  }
+}
+
+async function cancelPayment() {
+  if (!activePayment.value?.id) return;
+  cancellingPayment.value = true;
+  err.value = null;
+  try {
+    const res = await api.cancelPayment(activePayment.value.id);
+    activePayment.value = res.data?.payment || activePayment.value;
+  } catch (e) {
+    err.value = e?.response?.data?.message || "Không huỷ được giao dịch.";
+  } finally {
+    cancellingPayment.value = false;
   }
 }
 
@@ -203,16 +226,23 @@ function beginPolling() {
       await authStore.fetchMe();
       await getVipPredictions();
       await getVipYesterdayPredictions();
-      await fetchPaymentHistory();
     }
   }, 5000);
 }
 
 onMounted(async () => {
+  authStore.initAuth();
   if (!authStore.isAuthenticated) return;
+  if (authStore.isAuthenticated && !authStore.vipStatus) {
+    try {
+      await authStore.fetchMe();
+    } catch (e) {}
+  }
+  if (isVip.value && !isNearExpired.value) {
+    return navigateTo('/dashboard');
+  }
   await fetchPlans();
   await fetchUpsell();
-  await fetchPaymentHistory();
   if (isVip.value) {
     await getVipPredictions();
     await getVipYesterdayPredictions();
@@ -233,12 +263,11 @@ onUnmounted(() => {
     <!-- Trial/Expired Banner -->
     <div
       v-if="isTrial"
-      class="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl p-6 text-white"
+      class="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl p-3 sm:p-6 text-white"
     >
       <div class="flex items-center gap-4">
-        <div class="text-5xl">🔥</div>
         <div>
-          <h1 class="text-2xl font-bold">Bạn đang dùng VIP Trial!</h1>
+          <h1 class="text-lg md:text-2xl font-bold">🔥 Bạn đang dùng VIP Trial!</h1>
           <p class="mt-2 opacity-90">
             Còn {{ vipStatus?.vip_remaining_days }} ngày để trải nghiệm tất cả tính năng
             VIP. Nâng cấp để tiếp tục!
@@ -300,6 +329,22 @@ onUnmounted(() => {
               >{{ Number(plan.amount).toLocaleString("vi-VN") }}đ</strong
             >
           </label>
+        </div>
+        <div class="mt-4">
+          <div class="text-sm font-semibold text-gray-800 mb-2">Coupon</div>
+          <input
+            v-model="couponCode"
+            type="text"
+            class="w-full border rounded-lg px-3 py-2 text-sm"
+            placeholder="Nhập mã coupon (nếu có)"
+          />
+          <button
+            type="button"
+            class="text-sm text-blue-600 hover:underline inline-block mt-2"
+            @click="openCouponModal"
+          >
+            Xem coupon
+          </button>
         </div>
         <button
           class="mt-4 w-full bg-yellow-500 text-black py-2 rounded-lg font-semibold disabled:opacity-50 hover:bg-yellow-400 transition"
@@ -365,38 +410,26 @@ onUnmounted(() => {
         >
           {{ completePaymentLoading ? "Đang gửi yêu cầu..." : "Hoàn tất thanh toán" }}
         </button>
+
+        <button
+          v-if="activePayment.status === 'pending'"
+          class="mt-3 w-full border border-red-200 text-red-700 py-2 rounded-lg font-semibold disabled:opacity-50 hover:bg-red-50 transition"
+          :disabled="cancellingPayment"
+          @click="cancelPayment"
+        >
+          {{ cancellingPayment ? "Đang huỷ..." : "Huỷ giao dịch" }}
+        </button>
       </div>
     </div>
 
     <div class="bg-white rounded-xl border p-6 max-sm:p-3">
-      <h2 class="font-semibold mb-3">Lịch sử chuyển khoản (3 ngày gần nhất)</h2>
-      <div v-if="!paymentHistory.length" class="text-sm text-gray-500">
-        Chưa có giao dịch nào trong 3 ngày gần đây.
-      </div>
-      <div v-else class="space-y-2">
-        <div
-          v-for="item in paymentHistory"
-          :key="item.id"
-          class="border rounded-lg p-3 text-sm flex items-center justify-between gap-2"
-        >
-          <div>
-            <p>
-              <strong>{{ item.plan_name }}</strong> -
-              {{ Number(item.amount).toLocaleString("vi-VN") }}đ
-            </p>
-            <p class="text-gray-600">
-              Nội dung: <span class="font-mono">{{ item.transfer_content }}</span>
-            </p>
-          </div>
-          <div class="text-right">
-            <p class="font-medium">{{ item.status }}</p>
-            <p class="text-gray-500">
-              {{ formatDate(item.created_at, true, "DD-MM-YYYY HH:mm:ss") }}
-            </p>
-          </div>
-        </div>
-      </div>
+      <h2 class="font-semibold mb-3">Lịch sử giao dịch</h2>
+      <NuxtLink to="/transactions" class="text-sm text-blue-600 hover:underline">
+        Xem lịch sử giao dịch (3 ngày gần nhất)
+      </NuxtLink>
     </div>
+
+    <CouponModal :open="couponModalOpen" @close="closeCouponModal" @apply="applyCoupon" />
 
     <!-- VIP Content -->
     <div
@@ -445,6 +478,9 @@ onUnmounted(() => {
                     item.is_in_prediction
                       ? 'border-purple-500 ring-2 ring-purple-200'
                       : 'border-transparent',
+                    item.was_hit_same_day_last_year && !item.is_in_prediction
+                      ? 'border-blue-500 ring-2 ring-blue-200'
+                      : '',
                     item.confidence > 70
                       ? 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg scale-105'
                       : item.confidence > 50

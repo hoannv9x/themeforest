@@ -44,6 +44,27 @@
                 placeholder="Email"
                 required
               />
+              <div class="mt-5 flex gap-2">
+                <input
+                  v-model="form.verificationCode"
+                  class="flex-1 px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="6"
+                  placeholder="Mã xác nhận (6 số)"
+                  required
+                />
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-lg text-sm font-semibold border bg-white disabled:opacity-50"
+                  :disabled="sendingCode || !form.email"
+                  @click="sendCode"
+                >
+                  {{ sendingCode ? "Đang gửi..." : "Gửi mã" }}
+                </button>
+              </div>
+              <div v-if="codeMessage" class="text-green-700 text-sm mt-3">{{ codeMessage }}</div>
+              <div v-if="codeError" class="text-red-500 text-sm mt-3">{{ codeError }}</div>
               <input
                 v-model="form.password"
                 class="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white mt-5"
@@ -57,6 +78,12 @@
                 type="password"
                 placeholder="Xác nhận mật khẩu"
                 required
+              />
+              <input
+                v-model="form.referralCode"
+                class="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white mt-5"
+                type="text"
+                placeholder="Mã giới thiệu (nếu có)"
               />
               <div v-if="error" class="text-red-500 text-sm mt-4">{{ error }}</div>
               <button
@@ -125,17 +152,38 @@ useHead({
 
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 const config = useRuntimeConfig();
+const api = useApi();
 
 const googleBtn = ref(null);
 
 const form = ref({
   name: "",
   email: "",
+  verificationCode: "",
   password: "",
   confirmPassword: "",
+  referralCode: "",
 });
 const error = ref(null);
+const sendingCode = ref(false);
+const codeMessage = ref("");
+const codeError = ref("");
+
+const sendCode = async () => {
+  sendingCode.value = true;
+  codeMessage.value = "";
+  codeError.value = "";
+  try {
+    const res = await api.requestRegisterCode({ email: form.value.email });
+    codeMessage.value = res.data?.message || "Đã gửi mã xác nhận.";
+  } catch (err) {
+    codeError.value = err?.response?.data?.message || err?.message || "Gửi mã thất bại.";
+  } finally {
+    sendingCode.value = false;
+  }
+};
 
 const register = async () => {
   error.value = null;
@@ -144,7 +192,14 @@ const register = async () => {
     return;
   }
   try {
-    await authStore.register(form.value.name, form.value.email, form.value.password, form.value.confirmPassword);
+    await authStore.register({
+      name: form.value.name,
+      email: form.value.email,
+      password: form.value.password,
+      password_confirmation: form.value.confirmPassword,
+      verification_code: form.value.verificationCode,
+      referral_code: form.value.referralCode || undefined,
+    });
     router.push("/dashboard");
   } catch (err) {
     error.value = err.message || "Đăng ký thất bại. Vui lòng thử lại.";
@@ -188,7 +243,10 @@ const initGoogle = async () => {
     callback: async (response) => {
       error.value = null;
       try {
-        await authStore.loginWithGoogle(response.credential);
+        await authStore.loginWithGoogle({
+          id_token: response.credential,
+          referral_code: form.value.referralCode || undefined,
+        });
         router.push('/dashboard');
       } catch (err) {
         error.value = err.message || 'Google login failed';
@@ -205,5 +263,11 @@ const initGoogle = async () => {
   });
 };
 
-onMounted(initGoogle);
+onMounted(() => {
+  const refCode = route.query?.ref;
+  if (typeof refCode === 'string' && !form.value.referralCode) {
+    form.value.referralCode = refCode;
+  }
+  initGoogle();
+});
 </script>

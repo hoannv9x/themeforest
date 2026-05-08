@@ -12,6 +12,7 @@ class NumberStat extends Model
         'number',
         'region',
         'total_count',
+        'total_count_db',
         'current_gap',
         'total_count_7_days',
         'total_count_30_days',

@@ -6,11 +6,8 @@ use App\Models\Number;
 use App\Models\NumberStat;
 use App\Models\Prediction;
 use App\Models\Result;
-use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
-
-use function PHPUnit\Framework\isNumeric;
 
 class PredictionService
 {
@@ -45,6 +42,7 @@ class PredictionService
 
     $lotoNumbers = collect($predictions['ranking']['numbers'] ?? []);
     $dbNumbers = collect($predictions['db_ranking']['numbers'] ?? []);
+    $bachThuNumbers = collect(data_get($predictions, 'bach_thu.numbers', []));
 
     $lotoWithHit = $lotoNumbers->map(function ($item) use ($allDrawnNumbers) {
       $predicted = str_pad((string) ($item['number'] ?? ''), 2, '0', STR_PAD_LEFT);
@@ -58,8 +56,15 @@ class PredictionService
       return $item;
     })->values();
 
+    $bachThuWithHit = $bachThuNumbers->map(function ($item) use ($allDrawnNumbers) {
+      $predicted = str_pad((string) ($item['number'] ?? ''), 2, '0', STR_PAD_LEFT);
+      $item['is_hit'] = $predicted !== '' && $allDrawnNumbers->contains($predicted);
+      return $item;
+    })->values();
+
     $lotoHits = $lotoWithHit->where('is_hit', true)->pluck('number')->values();
     $dbHits = $dbWithHit->where('is_hit', true)->pluck('number')->values();
+    $bachThuHits = $bachThuWithHit->where('is_hit', true)->pluck('number')->values();
 
     return [
       'date' => Carbon::parse($yesterday)->format('d-m-Y'),
@@ -73,17 +78,24 @@ class PredictionService
           ...($predictions['db_ranking'] ?? []),
           'numbers' => $dbWithHit,
         ],
+        'bach_thu' => [
+          ...($predictions['bach_thu'] ?? []),
+          'numbers' => $bachThuWithHit,
+        ],
       ],
       'hits' => [
         'loto' => $lotoHits,
         'db' => $dbHits,
+        'bach_thu' => $bachThuHits,
       ],
       'stats' => [
         'loto_total' => $lotoWithHit->count(),
         'loto_hit_count' => $lotoHits->count(),
         'db_total' => $dbWithHit->count(),
         'db_hit_count' => $dbHits->count(),
-        'total_hit_count' => $lotoHits->count() + $dbHits->count(),
+        'bach_thu_total' => $bachThuWithHit->count(),
+        'bach_thu_hit_count' => $bachThuHits->count(),
+        'total_hit_count' => $lotoHits->count() + $dbHits->count() + $bachThuHits->count(),
       ],
     ];
   }
@@ -266,138 +278,175 @@ class PredictionService
 
   function getPredictionProByDate($region, $date, $vip = false): array
   {
-    $predictions = Prediction::where('region', $region)
-      ->whereDate('date', $date)
+    $isVipUser = $vip && Auth::check() && Auth::user()?->isVip();
+    $yearStart = Carbon::now(config('app.timezone'))->startOfYear();
+    if (!$isVipUser && Carbon::parse($date)->lessThan($yearStart)) {
+      abort(403, 'Free chỉ xem dự đoán trong năm nay');
+    }
+
+    $heatmapAlgos = $isVipUser
+      ? ['vip_ranking', 'vip_db_ranking']
+      : ['ranking', 'db_ranking'];
+
+    $fetchAlgos = $isVipUser
+      ? array_values(array_unique(array_merge($heatmapAlgos, ['vip_3_cang', 'vip_bach_thu'])))
+      : $heatmapAlgos;
+
+    $predictionRows = Prediction::query()
+      ->select(['id', 'date', 'region', 'numbers', 'meta', 'algorithm', 'accuracy', 'created_at', 'updated_at'])
+      ->where('region', $region)
+      ->where('date', $date)
+      ->whereIn('algorithm', $fetchAlgos)
       ->get()
-      ->keyBy('algorithm')
-      ->toArray();
+      ->keyBy('algorithm');
+
     $numberCounts = [];
+    $predictionHeatmap = [];
+    foreach ($heatmapAlgos as $algo) {
+      $numbers = $predictionRows->get($algo)?->numbers ?? [];
+      if (!is_array($numbers)) {
+        continue;
+      }
+
+      foreach ($numbers as $data) {
+        if (!is_array($data)) {
+          continue;
+        }
+        $num = $data['number'] ?? null;
+        if ($num === null) {
+          continue;
+        }
+
+        $confidence = isset($data['confidence']) ? (float) $data['confidence'] : 1.0;
+        $numberCounts[$num] = ($numberCounts[$num] ?? 0) + $confidence;
+
+        if ($isVipUser) {
+          $predictionHeatmap[$num] = [
+            'confidence' => $confidence,
+            'score' => $data['score'] ?? 0,
+            'signals' => $data['signals'] ?? null,
+            'label' => $data['label'] ?? null,
+            'message' => $data['message'] ?? null,
+          ];
+        }
+      }
+    }
+
+    arsort($numberCounts);
+    $topNumbers = array_slice($numberCounts, 0, $isVipUser ? 5 : 2, true);
+
     $heatmapData = [];
     $cycleStats = [];
     $strategySuggestions = [];
 
-    $heatmapAlgos = $vip
-      ? ['vip_ranking', 'vip_db_ranking']
-      : ['ranking', 'db_ranking'];
-
-    foreach ($predictions as $algo => $value) {
-      if (!in_array($algo, $heatmapAlgos, true)) {
-        continue;
-      }
-      $numbers = $value['numbers'] ?? [];
-      foreach ($numbers as $data) {
-        $num = $data['number'] ?? null;
-        if ($num !== null) {
-          $confidence = isset($data['confidence']) ? (float) $data['confidence'] : 1.0;
-          $numberCounts[$num] = ($numberCounts[$num] ?? 0) + $confidence;
-          
-          if ($vip) {
-            $heatmapData[$num] = [
-              'number' => $num,
-              'confidence' => $confidence,
-              'score' => $data['score'] ?? 0,
-              'signals' => $data['signals'] ?? null,
-              'last_hit_days' => $data['last_hit_days'] ?? null,
-              'label' => $data['label'] ?? null,
-              'message' => $data['message'] ?? null,
-            ];
-          }
-        }
-      }
-    }
-    arsort($numberCounts);
-    $topNumbers = array_slice($numberCounts, 0, 5, true);
-
-    if (Auth::check() && Auth::user()->role == User::ROLE_VIP && $vip) {
+    if ($isVipUser) {
       $predictions = [
-        'db_ranking'   => $predictions['vip_db_ranking'] ?? null,
-        'ranking' => $predictions['vip_ranking'] ?? null,
-        'three_cang' => $predictions['vip_3_cang'] ?? null,
+        'db_ranking' => $predictionRows->get('vip_db_ranking')?->toArray(),
+        'ranking' => $predictionRows->get('vip_ranking')?->toArray(),
+        'three_cang' => $predictionRows->get('vip_3_cang')?->toArray(),
+        'bach_thu' => $predictionRows->get('vip_bach_thu')?->toArray(),
       ];
-      
-      $stats = NumberStat::where('region', $region)->get();
-      $statsByNumber = $stats->keyBy('number');
-      
-      $cycleStats = $stats->map(function ($stat) {
-        return [
-          'number' => $stat->number,
-          'current_gap' => $stat->current_gap,
-          'max_gap' => $stat->max_gap,
-          'avg_gap' => $stat->avg_gap,
-          'std_gap' => $stat->std_gap,
-          'total_count' => $stat->total_count,
-          'total_count_7_days' => $stat->total_count_7_days,
-          'total_count_30_days' => $stat->total_count_30_days,
-          'current_gap_db' => $stat->current_gap_db,
-          'max_gap_db' => $stat->max_gap_db,
-          'avg_gap_db' => $stat->avg_gap_db,
-          'std_gap_db' => $stat->std_gap_db,
-        ];
-      })->values()->toArray();
-      
+
+      $lastYearDate = Carbon::parse($date)->subYear()->format('Y-m-d');
+      $lastYearResult = Result::query()
+        ->where('region', $region)
+        ->whereDate('date', $lastYearDate)
+        ->latest('id')
+        ->first();
+      $lastYearHitSet = collect();
+      if ($lastYearResult) {
+        $lastYearHitSet = Number::query()
+          ->where('result_id', $lastYearResult->id)
+          ->pluck('number')
+          ->map(fn($n) => str_pad((string) $n, 2, '0', STR_PAD_LEFT))
+          ->unique()
+          ->values();
+      }
+
+      $statsByNumber = NumberStat::query()
+        ->select([
+          'number',
+          'total_count',
+          'total_count_7_days',
+          'total_count_30_days',
+          'total_count_db',
+          'last_appeared_at',
+          'last_appeared_at_db',
+          'current_gap',
+          'max_gap',
+          'avg_gap',
+          'std_gap',
+          'current_gap_db',
+          'max_gap_db',
+          'avg_gap_db',
+          'std_gap_db',
+        ])
+        ->where('region', $region)
+        ->get()
+        ->keyBy('number');
+
       for ($i = 0; $i <= 99; $i++) {
-        $num = str_pad((string)$i, 2, '0', STR_PAD_LEFT);
+        $num = str_pad((string) $i, 2, '0', STR_PAD_LEFT);
         $stat = $statsByNumber->get($num);
-        $predictionData = $heatmapData[$num] ?? null;
-        
-        $lastHitDate = null;
-        $lastDbHitDate = null;
-        
-        if ($stat) {
-          $recentLotoResult = Result::where('region', $region)
-            ->whereHas('numbers', function ($q) use ($num) {
-              $q->where('number', $num)->whereNotIn('prize', ['db', 'ma_db']);
-            })
-            ->latest('date')
-            ->first();
-          $lastHitDate = $recentLotoResult?->date;
-          
-          $recentDbResult = Result::where('region', $region)
-            ->whereHas('numbers', function ($q) use ($num) {
-              $q->where('number', $num)->where('prize', 'db');
-            })
-            ->latest('date')
-            ->first();
-          $lastDbHitDate = $recentDbResult?->date;
-        }
-        
-        $heatmapData[$num] = [
+        $p = $predictionHeatmap[$num] ?? null;
+
+        $cycleStats[] = [
           'number' => $num,
-          'confidence' => $predictionData['confidence'] ?? 0,
-          'score' => $predictionData['score'] ?? 0,
-          'signals' => $predictionData['signals'] ?? null,
-          'label' => $predictionData['label'] ?? null,
-          'message' => $predictionData['message'] ?? null,
+          'current_gap' => $stat?->current_gap ?? 0,
+          'max_gap' => $stat?->max_gap ?? 0,
+          'avg_gap' => $stat?->avg_gap ?? 0,
+          'std_gap' => $stat?->std_gap ?? 0,
           'total_count' => $stat?->total_count ?? 0,
           'total_count_db' => $stat?->total_count_db ?? 0,
-          'last_hit_date' => $lastHitDate,
-          'last_db_hit_date' => $lastDbHitDate,
+          'total_count_7_days' => $stat?->total_count_7_days ?? 0,
+          'total_count_30_days' => $stat?->total_count_30_days ?? 0,
+          'current_gap_db' => $stat?->current_gap_db ?? 0,
+          'max_gap_db' => $stat?->max_gap_db ?? 0,
+          'avg_gap_db' => $stat?->avg_gap_db ?? 0,
+          'std_gap_db' => $stat?->std_gap_db ?? 0,
+        ];
+
+        $heatmapData[$num] = [
+          'number' => $num,
+          'confidence' => $p['confidence'] ?? 0,
+          'score' => $p['score'] ?? 0,
+          'signals' => $p['signals'] ?? null,
+          'label' => $p['label'] ?? null,
+          'message' => $p['message'] ?? null,
+          'total_count' => $stat?->total_count ?? 0,
+          'total_count_db' => $stat?->total_count_db ?? 0,
+          'last_hit_date' => $stat?->last_appeared_at ?? null,
+          'last_db_hit_date' => $stat?->last_appeared_at_db ?? null,
           'current_gap' => $stat?->current_gap ?? 0,
           'max_gap' => $stat?->max_gap ?? 0,
           'current_gap_db' => $stat?->current_gap_db ?? 0,
           'max_gap_db' => $stat?->max_gap_db ?? 0,
           'avg_gap' => $stat?->avg_gap ?? 0,
           'std_gap' => $stat?->std_gap ?? 0,
-          'is_in_prediction' => isset($heatmapData[$num]) && isset($predictionData),
+          'was_hit_same_day_last_year' => $lastYearHitSet->contains($num),
+          'is_in_prediction' => $p !== null,
         ];
       }
-      
-      ksort($heatmapData);
-      
+
       $strategySuggestions = $this->generateStrategySuggestions($topNumbers, $cycleStats);
     } else {
       $predictions = [
-        'db_ranking'   => $predictions['db_ranking'] ?? null,
-        'ranking' => $predictions['ranking'] ?? null,
+        'db_ranking' => $predictionRows->get('db_ranking')?->toArray(),
+        'ranking' => $predictionRows->get('ranking')?->toArray(),
       ];
     }
 
+    $dateObj = Carbon::parse($date);
     $result = [
+      'date' => $date,
+      'date_label' => $dateObj->toDateString() === now()->toDateString()
+        ? 'Hôm nay'
+        : $dateObj->format('d-m-Y'),
       'predictions' => $predictions,
-      'top_numbers' => $topNumbers
+      'top_numbers' => $topNumbers,
     ];
-    
-    if ($vip) {
+
+    if ($vip && $isVipUser) {
       $result['heatmap'] = $heatmapData;
       $result['cycle_stats'] = $cycleStats;
       $result['strategy_suggestions'] = $strategySuggestions;

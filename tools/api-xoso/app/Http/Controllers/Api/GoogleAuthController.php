@@ -14,6 +14,7 @@ class GoogleAuthController extends Controller
     {
         $payload = $request->validate([
             'id_token' => ['required', 'string'],
+            'referral_code' => ['nullable', 'string', 'max:64'],
         ]);
 
         $clientId = env('GOOGLE_CLIENT_ID');
@@ -61,7 +62,18 @@ class GoogleAuthController extends Controller
                 'google_id' => $googleId,
                 'avatar_url' => $picture,
                 'password' => Str::password(32),
+                'email_verified_at' => now(),
             ]);
+
+            $refCode = $payload['referral_code'] ?? null;
+            if ($refCode) {
+                $code = Str::upper(trim((string) $refCode));
+                $referrer = User::query()->where('referral_code', $code)->first();
+                abort_if(!$referrer, 422, 'Mã giới thiệu không hợp lệ.');
+                abort_if($referrer->id === $user->id, 422, 'Mã giới thiệu không hợp lệ.');
+                $user->forceFill(['referred_by_user_id' => $referrer->id])->save();
+            }
+
             $user->startVipTrial();
             $user->refresh();
         } else {
@@ -82,6 +94,11 @@ class GoogleAuthController extends Controller
                 $dirty = true;
             }
 
+            if (!$user->email_verified_at) {
+                $user->email_verified_at = now();
+                $dirty = true;
+            }
+
             if ($dirty) {
                 $user->save();
             }
@@ -97,4 +114,3 @@ class GoogleAuthController extends Controller
         ]);
     }
 }
-

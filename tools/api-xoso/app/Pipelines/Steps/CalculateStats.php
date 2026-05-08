@@ -43,6 +43,7 @@ class CalculateStats
 
       // 📊 total_count
       $totalCount = $dates->count();
+      $totalCountDb = $dbDates->count();
 
       // 📊 total_count_by_days
       $countsByDays = [];
@@ -87,6 +88,7 @@ class CalculateStats
 
         // 📊 frequency
         'total_count' => $totalCount,
+        'total_count_db' => $totalCountDb,
         'total_count_7_days' => $countsByDays[7] ?? 0,
         'total_count_30_days' => $countsByDays[30] ?? 0,
         'total_count_90_days' => $countsByDays[90] ?? 0,

@@ -28,7 +28,7 @@ class VipController extends Controller
         
         return response()->json([
             'vip_status' => $vipStatus,
-            'plans' => PaymentService::VIP_PLANS,
+            'plans' => $this->paymentService->getPlansForType('vip'),
             'benefits' => [
                 'Full bộ số + phân tích',
                 'Không delay',

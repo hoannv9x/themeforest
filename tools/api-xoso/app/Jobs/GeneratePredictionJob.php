@@ -14,10 +14,13 @@ use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class GeneratePredictionJob implements ShouldQueue
 {
     use Queueable;
+
+    private ?string $predictionDate = null;
 
     /**
      * Create a new job instance.
@@ -32,32 +35,63 @@ class GeneratePredictionJob implements ShouldQueue
      */
     public function handle(ScoreService $service, ScoreServiceVip $vipService, ExplainService $explainService)
     {
-        $stats = NumberStat::where('region', ModelsNumber::REGION_MB)->get();
-        $sharedTop = $this->pickDiversifiedNumbers(
-            $service->rank($stats),
-            'ranking',
-            6
-        );
-        $sharedTopByNumber = $sharedTop->keyBy('number');
+        $now = now();
+        $hour = (int) $now->format('H');
 
-        $freeTop = $sharedTop->shuffle()->take(3)->values();
-        $vipFromShared = $sharedTop
-            ->reject(fn($item) => $freeTop->pluck('number')->contains($item['number']))
+        // If current time is between 17:00 and 19:00 (inclusive), do not generate
+        if ($hour >= 17 && $hour < 19) {
+            return;
+        }
+
+        // Determine the prediction date based on current hour
+        if ($hour < 17) {
+            $date = $now->toDateString();
+        } else {
+            // $hour >= 19
+            $date = $now->copy()->addDay()->toDateString();
+        }
+        $this->predictionDate = $date;
+
+        $result = Result::query()->latest('id')->first();
+        if (!$result || !$result->date) {
+            return;
+        }
+        $fullStats = NumberStat::where('region', ModelsNumber::REGION_MB)->get();
+        $yearStats = $this->buildYearScopedStats(ModelsNumber::REGION_MB, $date);
+
+        $freeTopPool = $this->pickDiversifiedNumbers(
+            $service->rank($yearStats),
+            'ranking',
+            6,
+            1.0,
+            $date
+        );
+
+        $freeTop = $freeTopPool
+            ->sort(function ($a, $b) {
+                $scoreCmp = ((float) ($b['score'] ?? 0)) <=> ((float) ($a['score'] ?? 0));
+                if ($scoreCmp !== 0) {
+                    return $scoreCmp;
+                }
+                return strcmp((string) ($a['number'] ?? ''), (string) ($b['number'] ?? ''));
+            })
+            ->take(2)
             ->values();
 
         $vipTopCandidates = $this->pickDiversifiedNumbers(
-            $vipService->rank($stats),
+            $vipService->rank($fullStats),
             'vip_ranking',
-            10,
-            1.25
+            3,
+            1.25,
+            $date
         );
-        $vipTop = collect($vipFromShared);
-        $vipTargetCount = 8;
+        $vipTop = collect();
+        $vipTargetCount = 5;
         foreach ($vipTopCandidates as $candidate) {
             if ($vipTop->count() >= $vipTargetCount) {
                 break;
             }
-            if ($sharedTopByNumber->has($candidate['number']) || $vipTop->pluck('number')->contains($candidate['number'])) {
+            if ($vipTop->pluck('number')->contains($candidate['number'])) {
                 continue;
             }
             $vipTop->push($candidate);
@@ -65,27 +99,33 @@ class GeneratePredictionJob implements ShouldQueue
         $vipTop = $vipTop->take($vipTargetCount)->values();
 
         $freeDbTop = $this->pickDiversifiedNumbers(
-            $service->rankDb($stats)->map(fn($item) => [
+            $service->rankDb($yearStats)->map(fn($item) => [
                 ...$item,
                 'score' => $item['db_score'] ?? 0,
             ]),
             'db_ranking',
-            2
+            2,
+            1.0,
+            $date
         );
         $vipDbTop = $this->pickDiversifiedNumbers(
-            $vipService->rankDb($stats)->map(fn($item) => [
+            $vipService->rankDb($fullStats)->map(fn($item) => [
                 ...$item,
                 'score' => $item['db_score'] ?? 0,
             ]),
             'vip_db_ranking',
-            5,
-            1.25
+            3,
+            1.25,
+            $date
         );
 
         $explains = $vipTop->map(fn($item) => $explainService->explainLoto((object) $item));
         $explainsDb = $vipDbTop->map(fn($item) => $explainService->explainDb((object) $item));
 
         $vipThreeDigits = $this->buildThreeDigitsPrediction(3, $vipDbTop);
+        $vipBachThu = $vipTop->first()
+            ? collect([$explainService->explainLoto((object) $vipTop->first())])
+            : collect();
 
         $algorithms = [
             'ranking' => $freeTop->values(),
@@ -93,12 +133,13 @@ class GeneratePredictionJob implements ShouldQueue
             'vip_db_ranking' => $explainsDb,
             'db_ranking' => $freeDbTop->values(),
             'vip_3_cang' => $vipThreeDigits,
+            'vip_bach_thu' => $vipBachThu->values(),
         ];
 
         foreach ($algorithms as $code => $data) {
             Prediction::updateOrCreate(
                 [
-                    'date' => now()->toDateString(),
+                    'date' => $date,
                     'region' => ModelsNumber::REGION_MB,
                     'algorithm' => $code,
                 ],
@@ -111,11 +152,140 @@ class GeneratePredictionJob implements ShouldQueue
         }
     }
 
+    private function buildYearScopedStats(string $region, string $asOfDate): Collection
+    {
+        $asOf = Carbon::parse($asOfDate)->startOfDay();
+        $yearStart = $asOf->copy()->startOfYear();
+
+        $rows = DB::table('numbers')
+            ->join('results', 'numbers.result_id', '=', 'results.id')
+            ->where('results.region', $region)
+            ->whereDate('results.date', '>=', $yearStart->toDateString())
+            ->whereDate('results.date', '<=', $asOf->toDateString())
+            ->select(['numbers.number as number', 'numbers.prize as prize', 'results.date as date'])
+            ->get();
+
+        $allDates = array_fill(0, 100, []);
+        $dbDates = array_fill(0, 100, []);
+
+        foreach ($rows as $r) {
+            $num = str_pad((string) $r->number, 2, '0', STR_PAD_LEFT);
+            if (!preg_match('/^\d{2}$/', $num)) {
+                continue;
+            }
+            $idx = (int) $num;
+            $d = Carbon::parse($r->date)->toDateString();
+            $allDates[$idx][] = $d;
+            if ($r->prize === 'db') {
+                $dbDates[$idx][] = $d;
+            }
+        }
+
+        $cut7 = $asOf->copy()->subDays(7)->toDateString();
+        $cut30 = $asOf->copy()->subDays(30)->toDateString();
+        $cut90 = $asOf->copy()->subDays(90)->toDateString();
+        $cut180 = $asOf->copy()->subDays(180)->toDateString();
+        $cut365 = $asOf->copy()->subDays(365)->toDateString();
+
+        $out = [];
+        for ($i = 0; $i <= 99; $i++) {
+            $num = str_pad((string) $i, 2, '0', STR_PAD_LEFT);
+
+            $dates = $allDates[$i];
+            sort($dates);
+            $uniqueDates = array_values(array_unique($dates));
+
+            $last = !empty($uniqueDates) ? end($uniqueDates) : null;
+            $currentGap = $last ? Carbon::parse($last)->diffInDays($asOf) : 999;
+            $gaps = [];
+            $prev = null;
+            foreach ($uniqueDates as $d) {
+                if ($prev !== null) {
+                    $gaps[] = Carbon::parse($prev)->diffInDays(Carbon::parse($d));
+                }
+                $prev = $d;
+            }
+            $maxGap = !empty($gaps) ? max($gaps) : 0;
+            if ($currentGap > $maxGap) {
+                $maxGap = $currentGap;
+            }
+            $avgGap = !empty($gaps) ? (int) round(array_sum($gaps) / count($gaps)) : 0;
+            $stdGap = 0;
+            if (count($gaps) >= 2) {
+                $mean = array_sum($gaps) / count($gaps);
+                $variance = array_sum(array_map(fn($x) => ($x - $mean) ** 2, $gaps)) / count($gaps);
+                $stdGap = (int) round(sqrt($variance));
+            }
+
+            $db = $dbDates[$i];
+            sort($db);
+            $dbUnique = array_values(array_unique($db));
+            $lastDb = !empty($dbUnique) ? end($dbUnique) : null;
+            $currentGapDb = $lastDb ? Carbon::parse($lastDb)->diffInDays($asOf) : 999;
+            $dbGaps = [];
+            $prevDb = null;
+            foreach ($dbUnique as $d) {
+                if ($prevDb !== null) {
+                    $dbGaps[] = Carbon::parse($prevDb)->diffInDays(Carbon::parse($d));
+                }
+                $prevDb = $d;
+            }
+            $maxGapDb = !empty($dbGaps) ? max($dbGaps) : 0;
+            if ($currentGapDb > $maxGapDb) {
+                $maxGapDb = $currentGapDb;
+            }
+            $avgGapDb = !empty($dbGaps) ? (int) round(array_sum($dbGaps) / count($dbGaps)) : 0;
+            $stdGapDb = 0;
+            if (count($dbGaps) >= 2) {
+                $mean = array_sum($dbGaps) / count($dbGaps);
+                $variance = array_sum(array_map(fn($x) => ($x - $mean) ** 2, $dbGaps)) / count($dbGaps);
+                $stdGapDb = (int) round(sqrt($variance));
+            }
+
+            $total = count($dates);
+            $totalDb = count($db);
+
+            $countAfter = function (array $arr, string $cut): int {
+                $c = 0;
+                foreach ($arr as $d) {
+                    if ($d >= $cut) $c++;
+                }
+                return $c;
+            };
+
+            $out[] = [
+                'number' => $num,
+                'region' => $region,
+                'total_count' => $total,
+                'total_count_db' => $totalDb,
+                'total_count_7_days' => $countAfter($dates, $cut7),
+                'total_count_30_days' => $countAfter($dates, $cut30),
+                'total_count_90_days' => $countAfter($dates, $cut90),
+                'total_count_180_days' => $countAfter($dates, $cut180),
+                'total_count_365_days' => $countAfter($dates, $cut365),
+                'last_appeared_at' => $last,
+                'last_appeared_at_db' => $lastDb,
+                'current_gap' => $currentGap,
+                'max_gap' => $maxGap,
+                'avg_gap' => $avgGap,
+                'std_gap' => $stdGap,
+                'current_gap_db' => $currentGapDb,
+                'max_gap_db' => $maxGapDb,
+                'avg_gap_db' => $avgGapDb,
+                'std_gap_db' => $stdGapDb,
+                'updated_at' => now(),
+            ];
+        }
+
+        return NumberStat::hydrate($out);
+    }
+
     private function pickDiversifiedNumbers(
         Collection $ranked,
         string $algorithm,
         int $limit,
-        float $vipPenaltyMultiplier = 1.0
+        float $vipPenaltyMultiplier = 1.0,
+        ?string $predictionDate = null
     ): Collection {
         $pool = $ranked;
         if (!str_contains($algorithm, 'db')) {
@@ -125,8 +295,9 @@ class GeneratePredictionJob implements ShouldQueue
             }
         }
 
-        [$hitNumbers, $dbHitNumbers] = $this->getYesterdayHits();
-        $recentPenalty = $this->recentPredictionPenalty($algorithm, 14);
+        $asOfDate = $predictionDate ?: $this->predictionDate ?: now()->toDateString();
+        [$hitNumbers, $dbHitNumbers] = $this->getYesterdayHits($asOfDate);
+        $recentPenalty = $this->recentPredictionPenalty($algorithm, 14, $asOfDate);
 
         return $pool
             ->map(function ($item) use ($recentPenalty, $hitNumbers, $dbHitNumbers, $algorithm, $vipPenaltyMultiplier) {
@@ -181,16 +352,23 @@ class GeneratePredictionJob implements ShouldQueue
                 $item['score'] = round($baseScore - $penalty - $missYesterdayPenalty, 6);
                 return $item;
             })
-            ->sortByDesc('score')
+            ->sort(function ($a, $b) {
+                $scoreCmp = ((float) ($b['score'] ?? 0)) <=> ((float) ($a['score'] ?? 0));
+                if ($scoreCmp !== 0) {
+                    return $scoreCmp;
+                }
+                return strcmp((string) ($a['number'] ?? ''), (string) ($b['number'] ?? ''));
+            })
             ->take($limit)
             ->values();
     }
 
-    private function getYesterdayHits(): array
+    private function getYesterdayHits(string $predictionDate): array
     {
+        $hitDate = Carbon::parse($predictionDate)->subDay()->toDateString();
         $result = Result::query()
             ->where('region', ModelsNumber::REGION_MB)
-            ->whereDate('date', Carbon::yesterday()->toDateString())
+            ->whereDate('date', $hitDate)
             ->latest('id')
             ->first();
 
@@ -216,12 +394,15 @@ class GeneratePredictionJob implements ShouldQueue
         return [$allHits, $dbHits];
     }
 
-    private function recentPredictionPenalty(string $algorithm, int $days): array
+    private function recentPredictionPenalty(string $algorithm, int $days, string $predictionDate): array
     {
+        $endDate = Carbon::parse($predictionDate)->toDateString();
+        $startDate = Carbon::parse($predictionDate)->subDays($days)->toDateString();
         $recentPredictions = Prediction::query()
             ->where('region', ModelsNumber::REGION_MB)
             ->where('algorithm', $algorithm)
-            ->whereDate('date', '>=', now()->subDays($days)->toDateString())
+            ->whereDate('date', '>=', $startDate)
+            ->whereDate('date', '<', $endDate)
             ->orderBy('date', 'desc')
             ->get(['numbers', 'date']);
 
@@ -295,6 +476,9 @@ class GeneratePredictionJob implements ShouldQueue
             return [];
         }
 
+        $anchor = Carbon::parse($this->predictionDate ?: now()->toDateString());
+        $cutoff = $anchor->copy()->subDays(180)->toDateString();
+
         $dbNumbers = collect($vipDbTop)->pluck('number')->filter()->toArray();
 
         foreach ($dbNumbers as $dbNum) {
@@ -307,14 +491,14 @@ class GeneratePredictionJob implements ShouldQueue
                     ->join('results', 'results.id', '=', 'numbers.result_id')
                     ->where('results.region', ModelsNumber::REGION_MB)
                     ->where('numbers.prize', 'db')
-                    ->whereDate('results.date', '>=', now()->subDays(180)->toDateString())
+                    ->whereDate('results.date', '>=', $cutoff)
                     ->whereRaw('RIGHT(LPAD(REPLACE(numbers.raw_number, "[^0-9]", ""), 3, "0"), 3) = ?', [$threeDigits])
                     ->orderByDesc('results.date')
                     ->get(['results.date']);
 
                 $freq = $rows->count();
                 $lastDate = $rows->first()?->date;
-                $gapDays = $lastDate ? Carbon::parse($lastDate)->diffInDays(now()) : 999;
+                $gapDays = $lastDate ? Carbon::parse($lastDate)->diffInDays($anchor) : 999;
 
                 $freqScore = min($freq / 5, 1);
                 $gapScore = min($gapDays / 30, 1);

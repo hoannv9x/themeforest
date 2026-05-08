@@ -20,8 +20,16 @@ class NumberStatController extends Controller
         $region = $request->input('region');
         $day = $request->input('day');
 
-        $numbers = $this->numberStatsService->getMostFrequentNumbers($region, $day);
+        $numbers = $this->numberStatsService->getMostFrequentNumbers($region, $day, 730);
 
+        return response()->json($numbers);
+    }
+
+    public function vipIndex(Request $request)
+    {
+        $region = $request->input('region');
+        $day = $request->input('day');
+        $numbers = $this->numberStatsService->getMostFrequentNumbers($region, $day, null);
         return response()->json($numbers);
     }
 }

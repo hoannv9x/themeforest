@@ -43,6 +43,21 @@
       </div>
       <p class="text-sm text-gray-600">Đã về: {{ dbHitCount }}/{{ dbTotal }}</p>
     </div>
+
+    <div v-if="bachThuNumbers.length" class="space-y-3">
+      <h4 class="font-semibold">Bạch thủ lô hôm qua</h4>
+      <div class="flex flex-wrap gap-2">
+        <div
+          v-for="(item, index) in bachThuNumbers"
+          :key="`bt-${index}-${item.number}`"
+          class="px-3 py-2 rounded-lg border text-sm font-bold"
+          :class="item.is_hit ? 'bg-green-500 border-green-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-700'"
+        >
+          {{ item.number }}
+        </div>
+      </div>
+      <p class="text-sm text-gray-600">Đã về: {{ bachThuHitCount }}/{{ bachThuTotal }}</p>
+    </div>
   </div>
 </template>
 
@@ -56,10 +71,13 @@ const props = defineProps({
 
 const lotoNumbers = computed(() => props.data?.predictions?.ranking?.numbers || []);
 const dbNumbers = computed(() => props.data?.predictions?.db_ranking?.numbers || []);
+const bachThuNumbers = computed(() => props.data?.predictions?.bach_thu?.numbers || []);
 const hasResult = computed(() => !!props.data?.has_result);
 const totalHits = computed(() => props.data?.stats?.total_hit_count || 0);
 const lotoHitCount = computed(() => props.data?.stats?.loto_hit_count || 0);
 const lotoTotal = computed(() => props.data?.stats?.loto_total || 0);
 const dbHitCount = computed(() => props.data?.stats?.db_hit_count || 0);
 const dbTotal = computed(() => props.data?.stats?.db_total || 0);
+const bachThuHitCount = computed(() => props.data?.stats?.bach_thu_hit_count || 0);
+const bachThuTotal = computed(() => props.data?.stats?.bach_thu_total || 0);
 </script>

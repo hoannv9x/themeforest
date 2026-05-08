@@ -3,51 +3,75 @@
 namespace App\Services;
 
 use App\Models\ApiSubscription;
+use App\Models\Coupon;
 use App\Models\Payment;
+use App\Models\PaymentPlan;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
 class PaymentService
 {
-    public const VIP_PLANS = [
-        'vip_7d' => ['name' => 'VIP 7 ngày', 'days' => 7, 'amount' => 99000],
-        'vip_15d' => ['name' => 'VIP 15 ngày', 'days' => 15, 'amount' => 179000],
-        'vip_30d' => ['name' => 'VIP 30 ngày', 'days' => 30, 'amount' => 299000],
-        'vip_6m' => ['name' => 'VIP 6 tháng', 'days' => 180, 'amount' => 1490000],
-        'vip_1y' => ['name' => 'VIP 1 năm', 'days' => 365, 'amount' => 2590000],
-    ];
-
-    public const API_PLANS = [
-        'api_7d' => ['name' => 'API 7 ngày', 'days' => 7, 'amount' => 199000],
-        'api_15d' => ['name' => 'API 15 ngày', 'days' => 15, 'amount' => 349000],
-        'api_30d' => ['name' => 'API 30 ngày', 'days' => 30, 'amount' => 599000],
-        'api_6m' => ['name' => 'API 6 tháng', 'days' => 180, 'amount' => 2990000],
-        'api_1y' => ['name' => 'API 1 năm', 'days' => 365, 'amount' => 4990000],
-    ];
-
-    public function create(User $user, string $type, string $planKey): Payment
+    public function getPlansForType(string $type): array
     {
-        $catalog = $type === 'api' ? self::API_PLANS : self::VIP_PLANS;
-        $plan = $catalog[$planKey] ?? null;
+        $rows = PaymentPlan::query()
+            ->where('type', $type)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[$row->plan_key] = [
+                'name' => $row->name,
+                'days' => (int) $row->duration_days,
+                'amount' => (int) $row->amount,
+            ];
+        }
+
+        return $out;
+    }
+
+    public function create(User $user, string $type, string $planKey, ?string $couponCode = null): Payment
+    {
+        $plan = PaymentPlan::query()
+            ->where('type', $type)
+            ->where('plan_key', $planKey)
+            ->where('is_active', true)
+            ->first();
 
         abort_if(!$plan, 422, 'Goi dang ky khong hop le.');
+
+        $coupon = $this->resolveCouponForPayment($user, $couponCode);
+
+        $amountOriginal = (int) $plan->amount;
+        $discountPercent = $coupon ? (int) $coupon->discount_percent : 0;
+        $discountAmount = $discountPercent > 0 ? (int) floor($amountOriginal * $discountPercent / 100) : 0;
+        $amountFinal = max(0, $amountOriginal - $discountAmount);
 
         return Payment::create([
             'user_id' => $user->id,
             'type' => $type,
             'plan_key' => $planKey,
-            'plan_name' => $plan['name'],
-            'duration_days' => $plan['days'],
-            'amount' => $plan['amount'],
+            'plan_name' => $plan->name,
+            'duration_days' => (int) $plan->duration_days,
+            'amount' => $amountFinal,
             'transfer_content' => $this->buildTransferContent($user->id, $type),
             'bank_account_name' => config('services.payment.bank_account_name'),
             'bank_account_number' => config('services.payment.bank_account_number'),
             'bank_name' => config('services.payment.bank_name'),
             'status' => 'pending',
+            'meta' => array_filter([
+                'amount_original' => $amountOriginal,
+                'discount_percent' => $discountPercent ?: null,
+                'discount_amount' => $discountAmount ?: null,
+                'amount_final' => $amountFinal,
+                'coupon_id' => $coupon?->id,
+                'coupon_code' => $coupon?->code,
+            ], fn ($v) => $v !== null),
         ]);
     }
 
@@ -57,6 +81,8 @@ class PaymentService
             return $payment;
         }
 
+        abort_if(in_array($payment->status, ['cancelled', 'rejected'], true), 422, 'Không thể approve giao dịch đã bị huỷ/từ chối.');
+
         $payment->update([
             'status' => 'paid',
             'paid_at' => now(),
@@ -64,7 +90,45 @@ class PaymentService
         ]);
 
         $this->applyEntitlement($payment);
-        $this->sendAdminEmail($payment->fresh('user'));
+        $this->consumeCouponIfAny($payment);
+        $this->rewardReferralIfEligible($payment);
+
+        return $payment->fresh();
+    }
+
+    public function reject(Payment $payment, User $actor, string $reason): Payment
+    {
+        abort_if($payment->status === 'paid', 422, 'Không thể từ chối giao dịch đã paid.');
+
+        $payment->update([
+            'status' => 'rejected',
+            'rejected_at' => now(),
+            'rejected_reason' => $reason,
+            'rejected_by_user_id' => $actor->id,
+            'meta' => array_merge($payment->meta ?? [], [
+                'rejected_at' => now()->toDateTimeString(),
+                'rejected_reason' => $reason,
+                'rejected_by_user_id' => $actor->id,
+            ]),
+        ]);
+
+        return $payment->fresh();
+    }
+
+    public function cancel(Payment $payment, User $actor, ?string $reason = null): Payment
+    {
+        abort_if($payment->status !== 'pending', 422, 'Chỉ có thể huỷ giao dịch đang pending.');
+
+        $payment->update([
+            'status' => 'cancelled',
+            'cancelled_at' => now(),
+            'cancelled_reason' => $reason,
+            'meta' => array_merge($payment->meta ?? [], array_filter([
+                'cancelled_at' => now()->toDateTimeString(),
+                'cancelled_reason' => $reason ?: null,
+                'cancelled_by_user_id' => $actor->id,
+            ], fn ($v) => $v !== null)),
+        ]);
 
         return $payment->fresh();
     }
@@ -104,15 +168,22 @@ class PaymentService
     private function applyEntitlement(Payment $payment): void
     {
         $user = $payment->user;
-        $expiresAt = Carbon::now()->addDays($payment->duration_days);
+        $now = Carbon::now();
 
         if ($payment->type === 'vip') {
+            $currentExpiredAt = $user->vip_expired_at;
+            $base = ($currentExpiredAt && $currentExpiredAt->isFuture()) ? $currentExpiredAt : $now;
+            $expiresAt = $base->copy()->addDays($payment->duration_days);
+
             $user->forceFill([
                 'role' => User::ROLE_VIP,
                 'vip_expired_at' => $expiresAt,
+                'vip_trial_started_at' => null,
             ])->save();
             return;
         }
+
+        $expiresAt = $now->copy()->addDays($payment->duration_days);
 
         $user->forceFill([
             'permission' => User::PERMISSION_DEVELOPER,
@@ -128,6 +199,91 @@ class PaymentService
         ]);
     }
 
+    private function resolveCouponForPayment(User $user, ?string $couponCode): ?Coupon
+    {
+        $couponCode = $couponCode !== null ? trim((string) $couponCode) : '';
+        if ($couponCode === '') {
+            return null;
+        }
+
+        $code = Str::upper($couponCode);
+
+        $coupon = Coupon::query()
+            ->where('code', $code)
+            ->where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('starts_at')->orWhere('starts_at', '<=', now());
+            })
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>=', now());
+            })
+            ->first();
+
+        abort_if(!$coupon, 422, 'Mã coupon không hợp lệ hoặc đã hết hạn.');
+        abort_if($coupon->discount_type !== 'percent', 422, 'Mã coupon không hợp lệ.');
+        abort_if($coupon->discount_percent <= 0, 422, 'Mã coupon không hợp lệ.');
+
+        if ($coupon->user_id !== null) {
+            abort_if((int) $coupon->user_id !== (int) $user->id, 422, 'Mã coupon không áp dụng cho tài khoản này.');
+        }
+
+        if ($coupon->max_uses !== null) {
+            abort_if((int) $coupon->used_count >= (int) $coupon->max_uses, 422, 'Mã coupon đã hết lượt sử dụng.');
+        }
+
+        return $coupon;
+    }
+
+    private function consumeCouponIfAny(Payment $payment): void
+    {
+        $couponId = $payment->meta['coupon_id'] ?? null;
+        if (!$couponId) {
+            return;
+        }
+
+        Coupon::query()->whereKey($couponId)->increment('used_count');
+    }
+
+    private function rewardReferralIfEligible(Payment $payment): void
+    {
+        $user = $payment->user?->fresh();
+        if (!$user) {
+            return;
+        }
+
+        if (!$user->referred_by_user_id) {
+            return;
+        }
+
+        if ($user->referral_rewarded_at) {
+            return;
+        }
+
+        $referrer = User::query()->whereKey($user->referred_by_user_id)->first();
+        $user->forceFill(['referral_rewarded_at' => now()])->save();
+
+        if (!$referrer) {
+            return;
+        }
+
+        Coupon::create([
+            'code' => Coupon::generateUniqueCode(10),
+            'discount_type' => 'percent',
+            'discount_percent' => 5,
+            'max_uses' => 1,
+            'used_count' => 0,
+            'starts_at' => now(),
+            'expires_at' => now()->addDays(30),
+            'is_active' => true,
+            'user_id' => $referrer->id,
+            'source' => 'referral',
+            'meta' => [
+                'referred_user_id' => $user->id,
+                'payment_id' => $payment->id,
+            ],
+        ]);
+    }
+
     private function sendAdminEmail(Payment $payment): void
     {
         $user = $payment->user;
@@ -136,13 +292,22 @@ class PaymentService
         $developerLink = config('constant.url_frontend').'/admin/payments?payment='.$payment->id.'&permission='.User::PERMISSION_DEVELOPER;
         $userPermissionLink = config('constant.url_frontend').'/admin/payments?payment='.$payment->id.'&permission='.User::PERMISSION_USER;
 
+        $amountLine = "<p>Số tiền: <strong>".number_format($payment->amount)." VND</strong></p>";
+        $original = $payment->meta['amount_original'] ?? null;
+        $discountPercent = $payment->meta['discount_percent'] ?? null;
+        $discountAmount = $payment->meta['discount_amount'] ?? null;
+        $couponCode = $payment->meta['coupon_code'] ?? null;
+        if ($original && $discountAmount && $couponCode) {
+            $amountLine = "<p>Số tiền: <strong>".number_format((int) $payment->amount)." VND</strong> (gốc ".number_format((int) $original)." - giảm {$discountPercent}% / ".number_format((int) $discountAmount).", coupon {$couponCode})</p>";
+        }
+
         $adminMail = env('ADMIN_PAYMENT_EMAIL', 'adminxosoai@gmail.com');
         $subject = '[XOSO] Thanh toán thành công: '.$user->email;
-        $html = "<h2>Thong bao thanh toán thành công</h2>
+        $html = "<h2>Thông báo xác nhận thanh toán thành công</h2>
             <p>User: <strong>{$user->name}</strong> ({$user->email})</p>
             <p>Loại gói cài đặt: <strong>{$payment->plan_name}</strong> ({$payment->type})</p>
             <p>Nội dung chuyển khoản: <strong>{$payment->transfer_content}</strong></p>
-            <p>Số tiền: <strong>".number_format($payment->amount)." VND</strong></p>
+            {$amountLine}
             <hr>
             <p>Cập nhật role:</p>
             <p><a href='{$vipLink}'>Approve VIP</a> | <a href='{$normalLink}'>Approve User thường</a></p>

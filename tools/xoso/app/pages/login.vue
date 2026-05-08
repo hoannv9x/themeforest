@@ -40,6 +40,10 @@
                 placeholder="Password"
                 required
               />
+              <label class="mt-4 flex items-center gap-2 text-sm text-gray-700">
+                <input v-model="rememberMe" type="checkbox" class="rounded" />
+                <span>Ghi nhớ đăng nhập</span>
+              </label>
               <div v-if="error" class="text-red-500 text-sm mt-4">{{ error }}</div>
               <button
                 type="submit"
@@ -110,11 +114,20 @@ const form = ref({
   password: "",
 });
 const error = ref(null);
+const rememberMe = ref(false);
+
+const rememberEmailKey = "remember_login_email";
 
 const login = async () => {
   error.value = null;
   try {
-    await authStore.login(form.value.email, form.value.password);
+    if (rememberMe.value) {
+      localStorage.setItem(rememberEmailKey, form.value.email || "");
+    } else {
+      localStorage.removeItem(rememberEmailKey);
+    }
+
+    await authStore.login(form.value.email, form.value.password, rememberMe.value);
     router.push("/dashboard");
   } catch (err) {
     error.value = err.message || "Login failed. Please check your credentials.";
@@ -160,7 +173,13 @@ const initGoogle = async () => {
     callback: async (response) => {
       error.value = null;
       try {
-        await authStore.loginWithGoogle(response.credential);
+        if (rememberMe.value) {
+          localStorage.setItem(rememberEmailKey, form.value.email || "");
+        } else {
+          localStorage.removeItem(rememberEmailKey);
+        }
+
+        await authStore.loginWithGoogle(response.credential, undefined, rememberMe.value);
         router.push('/dashboard');
       } catch (err) {
         error.value = err.message || 'Google login failed';
@@ -177,5 +196,12 @@ const initGoogle = async () => {
   });
 };
 
-onMounted(initGoogle);
+onMounted(() => {
+  const savedEmail = localStorage.getItem(rememberEmailKey);
+  if (savedEmail && !form.value.email) {
+    form.value.email = savedEmail;
+    rememberMe.value = true;
+  }
+  initGoogle();
+});
 </script>

@@ -9,7 +9,7 @@
   >
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-xl font-bold">
-        {{ data?.is_vip ? '🔥 Gợi ý lô VIP hôm nay' : 'Gợi ý lô hôm nay' }}
+        {{ data?.is_vip ? `🔥 Gợi ý lô VIP (${data?.date_label || 'Hôm nay'})` : `Gợi ý lô (${data?.date_label || 'Hôm nay'})` }}
       </h2>
       <span v-if="data?.is_vip" class="bg-white text-yellow-700 px-3 py-1 rounded-full text-xs font-bold">
         VIP
@@ -67,8 +67,11 @@
       <div
         v-for="(item, index) in data.predictions?.ranking?.numbers || []"
         :key="index"
-        class="bg-white text-black px-4 py-3 rounded-lg font-bold text-center flex justify-center items-center flex-col transition-all hover:scale-105"
-        :class="{ 'max-sm:col-span-2': index == 2 && data.predictions?.ranking?.numbers[0].label }"
+      class="px-4 py-3 rounded-lg font-bold text-center flex justify-center items-center flex-col transition-all hover:scale-105"
+      :class="[
+        item.is_hit ? 'bg-green-500 text-white' : 'bg-white text-black',
+        { 'max-sm:col-span-2': index == 2 && data.predictions?.ranking?.numbers[0].label }
+      ]"
       >
         <div class="flex items-center gap-2 mb-1">
           <div class="text-2xl font-extrabold tracking-wide">
@@ -98,9 +101,28 @@
         </div>
       </div>
     </div>
+
+    <div v-if="data?.is_vip && data?.predictions?.bach_thu?.numbers?.length" class="mt-6">
+      <h3 class="text-xl font-bold mb-4">🎯 Bạch thủ lô</h3>
+      <div class="flex flex-wrap gap-3">
+        <div
+          v-for="(item, index) in data.predictions.bach_thu.numbers"
+          :key="`bt-${index}-${item.number}`"
+          class="px-5 py-4 rounded-lg font-bold text-center flex justify-center items-center flex-col transition-all hover:scale-105"
+          :class="item.is_hit ? 'bg-green-500 text-white' : 'bg-white text-black'"
+        >
+          <div class="text-3xl font-extrabold tracking-wide">
+            {{ item.number }}
+          </div>
+          <div v-if="item.message" class="text-xs mt-2 text-gray-600 leading-snug">
+            {{ item.message }}
+          </div>
+        </div>
+      </div>
+    </div>
     <hr class="my-4 border-white/30" />
     <h3 class="text-xl font-bold mb-4">
-      {{ data?.is_vip ? '🎯 Gợi ý đề VIP hôm nay' : 'Gợi ý đề hôm nay' }}
+      {{ data?.is_vip ? `🎯 Gợi ý đề VIP (${data?.date_label || 'Hôm nay'})` : `Gợi ý đề (${data?.date_label || 'Hôm nay'})` }}
     </h3>
     <div v-if="!data || !data.predictions?.db_ranking?.numbers">Không có dữ liệu</div>
 
@@ -117,8 +139,11 @@
       <div
         v-for="(item, index) in data?.predictions?.db_ranking?.numbers || []"
         :key="index"
-        class="bg-white text-black px-4 py-3 rounded-lg font-bold text-center flex justify-center items-center flex-col transition-all hover:scale-105"
-        :class="{ 'max-sm:col-span-2': index == 2 && data.predictions?.db_ranking?.numbers[0].label }"
+      class="px-4 py-3 rounded-lg font-bold text-center flex justify-center items-center flex-col transition-all hover:scale-105"
+      :class="[
+        item.is_hit ? 'bg-green-500 text-white' : 'bg-white text-black',
+        { 'max-sm:col-span-2': index == 2 && data.predictions?.db_ranking?.numbers[0].label }
+      ]"
       >
         <div class="flex items-center gap-2 mb-1">
           <div class="text-2xl font-extrabold tracking-wide">
@@ -154,7 +179,8 @@
         <span
           v-for="(item, index) in data.predictions.three_cang.numbers"
           :key="`3c-${index}`"
-          class="bg-white text-black px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2"
+          class="px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2"
+          :class="item.is_hit ? 'bg-green-500 text-white' : 'bg-white text-black'"
         >
           {{ item.number }}
         </span>

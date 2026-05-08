@@ -20,4 +20,19 @@ class ResultController extends Controller
     {
         return $this->resultService->index($request);
     }
+
+    public function show(Request $request, string $date)
+    {
+        return $this->resultService->show($request, $date);
+    }
+
+    public function vipIndex(Request $request)
+    {
+        return $this->resultService->index($request, true);
+    }
+
+    public function vipShow(Request $request, string $date)
+    {
+        return $this->resultService->show($request, $date, true);
+    }
 }

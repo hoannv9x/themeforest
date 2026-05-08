@@ -17,12 +17,14 @@ const authStore = useAuthStore();
 const plans = ref({});
 const selectedPlan = ref("api_30d");
 const payment = ref(null);
-const paymentHistory = ref([]);
 const qrContent = ref("");
 const subscription = ref(null);
 const webhooks = ref([]);
 const completePaymentLoading = ref(false);
 const err = ref(null);
+const couponCode = ref("");
+const couponModalOpen = ref(false);
+const cancellingPayment = ref(false);
 const countdownTimer = ref(null);
 const nowTick = ref(Date.now());
 const webhookForm = ref({
@@ -46,15 +48,26 @@ const loadData = async () => {
   ]);
   subscription.value = subscriptionRes.data;
   webhooks.value = webhookRes.data;
-  const paymentHistoryRes = await api.getPaymentHistory();
-  paymentHistory.value = paymentHistoryRes.data || [];
 };
 
 const createApiPayment = async () => {
-  const response = await api.createPayment({ type: "api", plan_key: selectedPlan.value });
+  const response = await api.createPayment({ type: "api", plan_key: selectedPlan.value, coupon_code: couponCode.value || undefined });
   payment.value = response.data.payment;
   qrContent.value = response.data.qr_content;
   await loadData();
+};
+
+const openCouponModal = () => {
+  couponModalOpen.value = true;
+};
+
+const closeCouponModal = () => {
+  couponModalOpen.value = false;
+};
+
+const applyCoupon = (code) => {
+  couponCode.value = code || "";
+  couponModalOpen.value = false;
 };
 
 const completePayment = async () => {
@@ -73,6 +86,20 @@ const completePayment = async () => {
     err.value = e?.response?.data?.message || e?.message || 'Không gửi được yêu cầu hoàn tất.';
   } finally {
     completePaymentLoading.value = false;
+  }
+};
+
+const cancelPayment = async () => {
+  if (!payment.value?.id) return;
+  cancellingPayment.value = true;
+  err.value = null;
+  try {
+    const res = await api.cancelPayment(payment.value.id);
+    payment.value = res.data?.payment || payment.value;
+  } catch (e) {
+    err.value = e?.response?.data?.message || e?.message || 'Không huỷ được giao dịch.';
+  } finally {
+    cancellingPayment.value = false;
   }
 };
 
@@ -190,6 +217,13 @@ onMounted(async () => {
             <strong>{{ Number(plan.amount).toLocaleString("vi-VN") }}d</strong>
           </label>
         </div>
+        <div class="mt-4">
+          <div class="text-sm font-semibold text-gray-800 mb-2">Coupon</div>
+          <input v-model="couponCode" type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="Nhập mã coupon (nếu có)" />
+          <button type="button" class="text-sm text-blue-600 hover:underline inline-block mt-2" @click="openCouponModal">
+            Xem coupon
+          </button>
+        </div>
         <button class="mt-4 bg-blue-600 text-white px-4 py-2 rounded" @click="createApiPayment">
           Tạo thanh toán gói sử dụng API
         </button>
@@ -237,30 +271,26 @@ onMounted(async () => {
         >
           {{ completePaymentLoading ? "Đang gửi..." : "Hoàn tất thanh toán" }}
         </button>
+
+        <button
+          v-if="payment.status === 'pending'"
+          class="mt-3 border border-red-200 text-red-700 px-4 py-2 rounded disabled:opacity-50 w-full hover:bg-red-50"
+          :disabled="cancellingPayment"
+          @click="cancelPayment"
+        >
+          {{ cancellingPayment ? "Đang huỷ..." : "Huỷ giao dịch" }}
+        </button>
       </div>
     </section>
 
     <section class="bg-white border rounded-xl p-6">
-      <h2 class="text-lg font-semibold">Lịch sử chuyển khoản (3 ngày gần nhất)</h2>
-      <div v-if="!paymentHistory.length" class="text-sm text-gray-500 mt-2">
-        Chưa có giao dịch nào trong 3 ngày gần đây.
-      </div>
-      <div v-else class="mt-3 space-y-2">
-        <div
-          v-for="item in paymentHistory"
-          :key="item.id"
-          class="border rounded p-3 flex justify-between text-sm"
-        >
-          <div>
-            <p class="font-medium">{{ item.plan_name }}</p>
-            <p class="text-gray-600">
-              {{ Number(item.amount).toLocaleString("vi-VN") }}đ - {{ item.transfer_content }}
-            </p>
-          </div>
-          <p class="font-medium">{{ item.status }}</p>
-        </div>
-      </div>
+      <h2 class="text-lg font-semibold">Lịch sử giao dịch</h2>
+      <NuxtLink to="/transactions" class="text-sm text-blue-600 hover:underline mt-2 inline-block">
+        Xem lịch sử giao dịch (3 ngày gần nhất)
+      </NuxtLink>
     </section>
+
+    <CouponModal :open="couponModalOpen" @close="closeCouponModal" @apply="applyCoupon" />
 
     <section class="bg-white border rounded-xl p-6">
       <h2 class="text-lg font-semibold">Webhook quản lý theo user</h2>

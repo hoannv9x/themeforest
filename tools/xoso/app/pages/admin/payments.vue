@@ -20,6 +20,7 @@ const router = useRouter();
 const loading = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
+const rejectReason = ref('');
 
 const query = reactive({
   search: '',
@@ -96,6 +97,7 @@ const pick = async (row) => {
   try {
     const res = await api.adminGetPayment(row.id);
     selected.value = res.data || null;
+    rejectReason.value = selected.value?.rejected_reason || '';
     await setPaymentQuery(row.id);
   } catch (e) {
     errorMessage.value = e?.response?.data?.message || e?.message || 'Không tải được chi tiết payment.';
@@ -115,6 +117,25 @@ const approve = async () => {
     await fetchPayments();
   } catch (e) {
     errorMessage.value = e?.response?.data?.message || e?.message || 'Approve thất bại.';
+  } finally {
+    loading.value = false;
+  }
+};
+
+
+const reject = async () => {
+  if (!selected.value) return;
+  resetMessages();
+  loading.value = true;
+  try {
+    const res = await api.adminRejectPayment(selected.value.id, { reason: rejectReason.value });
+    successMessage.value = res.data?.message || 'Đã từ chối.';
+    selected.value = res.data?.payment || selected.value;
+    rejectReason.value = '';
+    await fetchPayments();
+  } catch (e) {
+    const msg = e?.response?.data?.message || e?.message || 'Từ chối thất bại.';
+    errorMessage.value = msg;
   } finally {
     loading.value = false;
   }
@@ -193,6 +214,8 @@ onMounted(async () => {
           <option value="paid">paid</option>
           <option value="expired">expired</option>
           <option value="failed">failed</option>
+          <option value="cancelled">cancelled</option>
+          <option value="rejected">rejected</option>
         </select>
         <select v-model="query.manual_review_status" class="border rounded-lg px-3 py-2 text-sm" @change="() => { query.page = 1; fetchPayments(); }">
           <option value="">Manual review (all)</option>
@@ -326,11 +349,22 @@ onMounted(async () => {
             <div v-if="selected.paid_at" class="text-xs text-gray-600">
               Paid at: <span class="font-mono">{{ selected.paid_at }}</span>
             </div>
+            <div v-if="selected.cancelled_at" class="text-xs text-gray-600">
+              Cancelled at: <span class="font-mono">{{ selected.cancelled_at }}</span>
+            </div>
+            <div v-if="selected.rejected_at" class="text-xs text-gray-600">
+              Rejected at: <span class="font-mono">{{ selected.rejected_at }}</span>
+            </div>
           </div>
 
           <div class="text-sm">
             <div class="text-gray-500">Transfer content</div>
             <div class="font-mono bg-gray-50 border rounded p-2 text-xs break-all">{{ selected.transfer_content }}</div>
+          </div>
+
+          <div v-if="selected.rejected_reason" class="text-sm">
+            <div class="text-gray-500">Rejected reason</div>
+            <div class="bg-red-50 border border-red-200 rounded p-2 text-xs whitespace-pre-wrap">{{ selected.rejected_reason }}</div>
           </div>
 
           <button
@@ -340,6 +374,22 @@ onMounted(async () => {
           >
             {{ selected.status === 'paid' ? 'Đã paid' : 'Approve (set paid)' }}
           </button>
+
+          <div class="space-y-2">
+            <textarea
+              v-model="rejectReason"
+              class="w-full border rounded-lg px-3 py-2 text-sm"
+              rows="3"
+              placeholder="Lý do từ chối..."
+            />
+            <button
+              class="w-full bg-red-600 text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50"
+              :disabled="loading || selected.status === 'paid' || !rejectReason"
+              @click="reject"
+            >
+              Từ chối payment
+            </button>
+          </div>
         </div>
       </div>
     </div>

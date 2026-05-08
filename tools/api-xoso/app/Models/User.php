@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
@@ -22,8 +23,12 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'email_verified_at',
         'google_id',
         'avatar_url',
+        'referral_code',
+        'referred_by_user_id',
+        'referral_rewarded_at',
         'password',
         'role',
         'permission',
@@ -52,9 +57,11 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'email_verified_at' => 'datetime',
             'vip_expired_at' => 'datetime',
             'vip_trial_used' => 'boolean',
             'vip_trial_started_at' => 'datetime',
+            'referral_rewarded_at' => 'datetime',
         ];
     }
 
@@ -64,6 +71,37 @@ class User extends Authenticatable
 
     const PERMISSION_USER = 'user';
     const PERMISSION_DEVELOPER = 'developer';
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $user) {
+            if (!$user->referral_code) {
+                $user->referral_code = self::generateReferralCode();
+            }
+        });
+    }
+
+    public static function generateReferralCode(): string
+    {
+        for ($i = 0; $i < 10; $i++) {
+            $code = Str::upper(Str::random(10));
+            if (!self::where('referral_code', $code)->exists()) {
+                return $code;
+            }
+        }
+
+        return Str::upper(Str::uuid()->toString());
+    }
+
+    public function referrer()
+    {
+        return $this->belongsTo(self::class, 'referred_by_user_id');
+    }
+
+    public function referredUsers()
+    {
+        return $this->hasMany(self::class, 'referred_by_user_id');
+    }
 
     public function miniGamePredictions()
     {
@@ -85,6 +123,11 @@ class User extends Authenticatable
         return $this->role === self::ROLE_VIP
             && $this->vip_expired_at
             && $this->vip_expired_at->isFuture();
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
     }
 
     public function isTrialActive(): bool
@@ -112,7 +155,7 @@ class User extends Authenticatable
         if (!$this->isVip() || !$this->vip_expired_at) {
             return null;
         }
-        return max(0, $this->vip_expired_at->diffInDays(Carbon::now()));
+        return round(max(0, Carbon::now()->diffInDays($this->vip_expired_at, false)));
     }
 
     public function startVipTrial(): void
@@ -127,11 +170,14 @@ class User extends Authenticatable
 
     public function getVipStatus(): array
     {
+        $isVip = $this->isVip();
+        $isTrial = $this->isTrialActive();
+
         return [
-            'is_vip' => $this->isVip(),
-            'is_trial' => $this->isTrialActive(),
+            'is_vip' => $isVip,
+            'is_trial' => $isVip ? false : $isTrial,
             'has_used_trial' => $this->hasUsedTrial(),
-            'trial_remaining_days' => $this->getTrialRemainingDays(),
+            'trial_remaining_days' => $isVip ? null : $this->getTrialRemainingDays(),
             'vip_remaining_days' => $this->getVipRemainingDays(),
             'vip_expired_at' => $this->vip_expired_at,
             'role' => $this->role,

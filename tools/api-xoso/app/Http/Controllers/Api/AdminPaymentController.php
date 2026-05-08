@@ -43,16 +43,18 @@ class AdminPaymentController extends Controller
     public function show(Payment $payment)
     {
         return response()->json(
-            $payment->load('user')
+            $payment->load('user', 'rejectedBy')
         );
     }
 
     public function approve(Request $request, Payment $payment, PaymentService $paymentService)
     {
+        abort_if($request->user()?->id === $payment->user_id, 403, 'Không thể tự approve giao dịch của chính mình.');
+
         if ($payment->status === 'paid') {
             return response()->json([
                 'message' => 'Payment already paid',
-                'payment' => $payment->load('user'),
+                'payment' => $payment->load('user', 'rejectedBy'),
             ]);
         }
 
@@ -65,8 +67,23 @@ class AdminPaymentController extends Controller
 
         return response()->json([
             'message' => 'Approved',
-            'payment' => $updated->load('user'),
+            'payment' => $updated->load('user', 'rejectedBy'),
+        ]);
+    }
+
+    public function reject(Request $request, Payment $payment, PaymentService $paymentService)
+    {
+        abort_if($request->user()?->id === $payment->user_id, 403, 'Không thể tự từ chối giao dịch của chính mình.');
+
+        $payload = $request->validate([
+            'reason' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $updated = $paymentService->reject($payment, $request->user(), $payload['reason']);
+
+        return response()->json([
+            'message' => 'Rejected',
+            'payment' => $updated->load('user', 'rejectedBy'),
         ]);
     }
 }
-

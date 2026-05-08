@@ -27,15 +27,16 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    setAuthPayload(payload) {
+    setAuthPayload(payload, options = {}) {
       this.token = payload.token;
       this.user = payload.user;
       this.vipStatus = payload.vip_status;
       this.isAuthenticated = true;
 
-      const tokenCookie = useCookie('sanctum_token', { maxAge: 60 * 60 * 24 * 7, path: '/' });
-      const userCookie = useCookie('user', { maxAge: 60 * 60 * 24 * 7, path: '/' });
-      const vipStatusCookie = useCookie('vip_status', { maxAge: 60 * 60 * 24 * 7, path: '/' });
+      const maxAge = options?.remember ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7;
+      const tokenCookie = useCookie('sanctum_token', { maxAge, path: '/' });
+      const userCookie = useCookie('user', { maxAge, path: '/' });
+      const vipStatusCookie = useCookie('vip_status', { maxAge, path: '/' });
 
       tokenCookie.value = this.token;
       userCookie.value = this.user;
@@ -62,11 +63,11 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // User login
-    async login(email, password) {
+    async login(email, password, remember = false) {
       const { $api } = useNuxtApp();
       try {
         const response = await $api.post('/v1/login', { email, password });
-        this.setAuthPayload(response.data);
+        this.setAuthPayload(response.data, { remember });
 
         return response.data;
       } catch (error) {
@@ -101,11 +102,14 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async loginWithGoogle(idToken) {
+    async loginWithGoogle(idTokenOrPayload, referralCode, remember = false) {
       const { $api } = useNuxtApp();
+      const payload = typeof idTokenOrPayload === 'object'
+        ? idTokenOrPayload
+        : { id_token: idTokenOrPayload, referral_code: referralCode || undefined };
       try {
-        const response = await $api.post('/v1/auth/google', { id_token: idToken });
-        this.setAuthPayload(response.data);
+        const response = await $api.post('/v1/auth/google', payload);
+        this.setAuthPayload(response.data, { remember });
         return response.data;
       } catch (error) {
         this.logout();

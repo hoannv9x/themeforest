@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useAuthStore } from "~/stores/auth";
 import { useRoute } from "#app";
 
@@ -7,6 +7,14 @@ const authStore = useAuthStore();
 const route = useRoute();
 const isUserMenuOpen = ref(false);
 const isMobileMenuOpen = ref(false);
+
+const vipLink = computed(() => {
+  const remaining = authStore.vipStatus?.vip_remaining_days;
+  if (typeof remaining === 'number' && remaining <= 3) {
+    return '/vip';
+  }
+  return authStore.isVip ? '/dashboard' : '/vip';
+});
 
 const toggleUserMenu = () => {
   isUserMenuOpen.value = !isUserMenuOpen.value;
@@ -53,7 +61,7 @@ watch(
         <NuxtLink to="/">Trang chủ</NuxtLink>
         <NuxtLink to="/dashboard">Dashboard</NuxtLink>
         <NuxtLink to="/results">Kết quả</NuxtLink>
-        <NuxtLink to="/vip" class="text-yellow-500 font-semibold"> VIP </NuxtLink>
+        <NuxtLink :to="vipLink" class="text-yellow-500 font-semibold"> VIP </NuxtLink>
         <NuxtLink
           v-if="authStore.user?.permission === 'developer' || authStore.user?.role === 'admin'"
           to="/admin"
@@ -70,7 +78,7 @@ watch(
         <!-- VIP Status Badge -->
         <template v-if="authStore.isAuthenticated && authStore.isVip">
           <NuxtLink
-            to="/vip"
+            :to="vipLink"
             class="flex items-center gap-1 bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-semibold"
           >
             <span v-if="authStore.isTrial">🔥 VIP Trial</span>
@@ -125,7 +133,42 @@ watch(
                 </p>
               </div>
               <NuxtLink
-                to="/vip"
+                to="/account"
+                class="block px-3 py-2 hover:bg-gray-100 rounded"
+                @click="closeUserMenu"
+              >
+                Thông tin tài khoản
+              </NuxtLink>
+              <NuxtLink
+                to="/dashboard"
+                class="block px-3 py-2 hover:bg-gray-100 rounded"
+                @click="closeUserMenu"
+              >
+                Dashboard
+              </NuxtLink>
+              <NuxtLink
+                to="/transactions"
+                class="block px-3 py-2 hover:bg-gray-100 rounded"
+                @click="closeUserMenu"
+              >
+                Lịch sử giao dịch
+              </NuxtLink>
+              <NuxtLink
+                to="/coupons"
+                class="block px-3 py-2 hover:bg-gray-100 rounded"
+                @click="closeUserMenu"
+              >
+                Coupon của tôi
+              </NuxtLink>
+              <NuxtLink
+                to="/change-password"
+                class="block px-3 py-2 hover:bg-gray-100 rounded"
+                @click="closeUserMenu"
+              >
+                Đổi mật khẩu
+              </NuxtLink>
+              <NuxtLink
+                :to="vipLink"
                 class="block px-3 py-2 hover:bg-gray-100 rounded"
                 @click="closeUserMenu"
               >
@@ -163,7 +206,35 @@ watch(
       <NuxtLink to="/results" class="block px-4 py-2" @click="closeMobileMenu"
         >Kết quả</NuxtLink
       >
-      <NuxtLink to="/vip" class="block px-4 py-2 text-yellow-500" @click="closeMobileMenu"
+      <NuxtLink
+        v-if="authStore.isAuthenticated"
+        to="/account"
+        class="block px-4 py-2"
+        @click="closeMobileMenu"
+        >Thông tin tài khoản</NuxtLink
+      >
+      <NuxtLink
+        v-if="authStore.isAuthenticated"
+        to="/transactions"
+        class="block px-4 py-2"
+        @click="closeMobileMenu"
+        >Lịch sử giao dịch</NuxtLink
+      >
+      <NuxtLink
+        v-if="authStore.isAuthenticated"
+        to="/coupons"
+        class="block px-4 py-2"
+        @click="closeMobileMenu"
+        >Coupon của tôi</NuxtLink
+      >
+      <NuxtLink
+        v-if="authStore.isAuthenticated"
+        to="/change-password"
+        class="block px-4 py-2"
+        @click="closeMobileMenu"
+        >Đổi mật khẩu</NuxtLink
+      >
+      <NuxtLink :to="vipLink" class="block px-4 py-2 text-yellow-500" @click="closeMobileMenu"
         >VIP</NuxtLink
       >
       <NuxtLink

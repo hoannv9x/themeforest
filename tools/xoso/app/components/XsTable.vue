@@ -1,15 +1,15 @@
 <template>
   <div>
-    <div v-for="(data, index) in xsmb" :key="index" :class="{ 'my-20': !isToday(index) }">
+    <div v-for="(row, idx) in normalizedRows" :key="row.date" :class="{ 'my-8 md:my-20': !isToday(row.date) && idx > 0 }">
       <div class="bg-white border rounded overflow-hidden">
         <!-- Header -->
         <div class="bg-red-600 text-white text-center py-2 font-bold uppercase max-sm:text-sm">
-          🏆 {{ title }} - {{ isToday(index) ? 'Hôm nay' : index }}
+          🏆 {{ title }} - {{ isToday(row.date) ? 'Hôm nay' : formatDmy(row.date) }}
         </div>
         <!-- Sub header -->
         <div class="bg-yellow-100 text-center py-2 text-sm">
-          <span class="font-semibold" v-for="(n, imadb) in data.ma_db" :key="imadb">
-            {{ n }} <span v-if="imadb < data.ma_db.length - 1"> - </span>
+          <span class="font-semibold" v-for="(n, imadb) in row.raw_data.ma_db" :key="imadb">
+            {{ n }} <span v-if="imadb < row.raw_data.ma_db.length - 1"> - </span>
           </span>
         </div>
 
@@ -21,7 +21,13 @@
               <td class="w-32 bg-gray-100 font-semibold py-3 max-sm:text-xs max-sm:w-16">Đặc Biệt</td>
               <td class="py-3 max-sm:text-sm">
                 <span class="text-red-600 text-4xl font-bold tracking-wider max-sm:text-2xl">
-                  <span v-for="(n, idb) in data.db" :key="idb">{{ n }}</span>
+                  <span
+                    v-for="(n, idb) in row.raw_data.db"
+                    :key="idb"
+                    :class="isHit(n, row, 'db') ? 'bg-green-500 text-white px-2 py-1 rounded' : ''"
+                  >
+                    {{ n }}
+                  </span>
                 </span>
               </td>
             </tr>
@@ -30,7 +36,13 @@
             <tr class="border-t">
               <td class="bg-gray-100 py-3 max-sm:text-xs">Giải Nhất</td>
               <td class="py-3 font-semibold text-lg max-sm:text-md">
-                <span v-for="(n, i1) in data.g1" :key="i1">{{ n }}</span>
+                <span
+                  v-for="(n, i1) in row.raw_data.g1"
+                  :key="i1"
+                  :class="isHit(n, row, 'loto') ? 'bg-green-500 text-white px-2 py-1 rounded' : ''"
+                >
+                  {{ n }}
+                </span>
               </td>
             </tr>
 
@@ -38,15 +50,27 @@
             <tr class="border-t">
               <td class="bg-gray-100 py-3 max-sm:text-xs">Giải Nhì</td>
               <td class="py-3 grid grid-cols-2 gap-2 max-sm:text-md">
-                <span v-for="(n, i2) in data.g2" :key="i2">{{ n }}</span>
+                <span
+                  v-for="(n, i2) in row.raw_data.g2"
+                  :key="i2"
+                  :class="isHit(n, row, 'loto') ? 'bg-green-500 text-white px-2 py-1 rounded' : ''"
+                >
+                  {{ n }}
+                </span>
               </td>
             </tr>
 
             <!-- G3 -->
             <tr class="border-t">
               <td class="bg-gray-100 py-3 max-sm:text-xs">Giải Ba</td>
-              <td class="py-3 grid grid-cols-3 gap-y-2 max-sm:text-md">
-                <span v-for="(n, i3) in data.g3" :key="i3">{{ n }}</span>
+              <td class="py-3 grid grid-cols-3 gap-y-2 max-sm:text-md items-center justify-center">
+                <span
+                  v-for="(n, i3) in row.raw_data.g3"
+                  :key="i3"
+                  :class="isHit(n, row, 'loto') ? 'bg-green-500 text-white px-2 py-1 rounded' : ''"
+                >
+                  {{ n }}
+                </span>
               </td>
             </tr>
 
@@ -54,7 +78,13 @@
             <tr class="border-t">
               <td class="bg-gray-100 py-3 max-sm:text-xs">Giải Tư</td>
               <td class="py-3 grid grid-cols-4 gap-2 max-sm:text-md">
-                <span v-for="(n, i4) in data.g4" :key="i4">{{ n }}</span>
+                <span
+                  v-for="(n, i4) in row.raw_data.g4"
+                  :key="i4"
+                  :class="isHit(n, row, 'loto') ? 'bg-green-500 text-white px-2 py-1 rounded' : ''"
+                >
+                  {{ n }}
+                </span>
               </td>
             </tr>
 
@@ -62,7 +92,13 @@
             <tr class="border-t">
               <td class="bg-gray-100 py-3 max-sm:text-xs">Giải Năm</td>
               <td class="py-3 grid grid-cols-3 gap-y-2 max-sm:text-md">
-                <span v-for="(n, i5) in data.g5" :key="i5">{{ n }}</span>
+                <span
+                  v-for="(n, i5) in row.raw_data.g5"
+                  :key="i5"
+                  :class="isHit(n, row, 'loto') ? 'bg-green-500 text-white px-2 py-1 rounded' : ''"
+                >
+                  {{ n }}
+                </span>
               </td>
             </tr>
 
@@ -70,15 +106,27 @@
             <tr class="border-t">
               <td class="bg-gray-100 py-3 max-sm:text-xs">Giải Sáu</td>
               <td class="py-3 grid grid-cols-3 gap-2 max-sm:text-md">
-                <span v-for="(n, i6) in data.g6" :key="i6">{{ n }}</span>
+                <span
+                  v-for="(n, i6) in row.raw_data.g6"
+                  :key="i6"
+                  :class="isHit(n, row, 'loto') ? 'bg-green-500 text-white px-2 py-1 rounded' : ''"
+                >
+                  {{ n }}
+                </span>
               </td>
             </tr>
 
             <!-- G7 -->
             <tr class="border-t">
               <td class="bg-gray-100 py-3 max-sm:text-xs">Giải Bảy</td>
-              <td class="py-3 grid grid-cols-4 gap-2 text-red-500 font-semibold max-sm:text-md">
-                <span v-for="(n, i7) in data.g7" :key="i7">{{ n }}</span>
+              <td class="py-3 grid grid-cols-4 gap-2 text-red-500 font-semibold max-sm:text-md items-center justify-center">
+                <span
+                  v-for="(n, i7) in row.raw_data.g7"
+                  :key="i7"
+                  :class="isHit(n, row, 'loto') ? 'bg-green-500 text-white px-2 py-1 rounded' : ''"
+                >
+                  {{ n }}
+                </span>
               </td>
             </tr>
           </tbody>
@@ -94,9 +142,9 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in getHeadTailRows(data)" :key="`head-${index}-${row.head}`">
-                <td class="border px-2 py-1 font-semibold">{{ row.head }}</td>
-                <td class="border px-2 py-1 text-left">{{ row.tails }}</td>
+              <tr v-for="ht in getHeadTailRows(row.raw_data)" :key="`head-${row.date}-${ht.head}`">
+                <td class="border px-2 py-1 font-semibold">{{ ht.head }}</td>
+                <td class="border px-2 py-1 text-left">{{ ht.tails }}</td>
               </tr>
             </tbody>
           </table>
@@ -107,9 +155,9 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   xsmb: {
-    type: Array,
+    type: [Array, Object],
     required: true,
   },
   title: {
@@ -118,16 +166,21 @@ defineProps({
   },
 });
 
-const toYesterday = ref("");
+const todayYmd = ref("");
 
-const isToday = (index) => {
-  return index == toYesterday.value;
+const toLocalYmd = (d) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const isToday = (ymd) => {
+  return String(ymd || "") === todayYmd.value;
 };
 
 onMounted(() => {
-  const date = new Date();
-  date.setDate(date.getDate() - 1);
-  toYesterday.value = date.toISOString().slice(0, 10);
+  todayYmd.value = toLocalYmd(new Date());
 });
 
 const prizeKeys = ["db", "g1", "g2", "g3", "g4", "g5", "g6", "g7"];
@@ -136,6 +189,68 @@ const normalizeToTwoDigits = (value) => {
   const digits = String(value ?? "").replace(/\D/g, "");
   if (!digits) return null;
   return digits.slice(-2).padStart(2, "0");
+};
+
+const formatDmy = (ymd) => {
+  const s = String(ymd || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const [y, m, d] = s.split("-");
+  return `${d}-${m}-${y}`;
+};
+
+const normalizedRows = computed(() => {
+  const normalizeRawData = (raw) => {
+    const src = raw && typeof raw === "object" ? raw : {};
+    return {
+      ma_db: Array.isArray(src.ma_db) ? src.ma_db : [],
+      db: Array.isArray(src.db) ? src.db : [],
+      g1: Array.isArray(src.g1) ? src.g1 : [],
+      g2: Array.isArray(src.g2) ? src.g2 : [],
+      g3: Array.isArray(src.g3) ? src.g3 : [],
+      g4: Array.isArray(src.g4) ? src.g4 : [],
+      g5: Array.isArray(src.g5) ? src.g5 : [],
+      g6: Array.isArray(src.g6) ? src.g6 : [],
+      g7: Array.isArray(src.g7) ? src.g7 : [],
+    };
+  };
+
+  const src = props.xsmb;
+  if (Array.isArray(src)) {
+    return src
+      .map((item) => {
+        const date = String(item?.date || "").slice(0, 10);
+        const raw_data = normalizeRawData(item?.raw_data);
+        return {
+          date,
+          raw_data,
+          prediction_hits: item?.prediction_hits || null,
+        };
+      })
+      .filter((r) => r.date && r.raw_data);
+  }
+
+  if (src && typeof src === "object") {
+    return Object.entries(src)
+      .map(([date, raw_data]) => ({
+        date,
+        raw_data: normalizeRawData(raw_data),
+        prediction_hits: null,
+      }))
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  }
+
+  return [];
+});
+
+const isHit = (rawValue, row, kind) => {
+  const loto = normalizeToTwoDigits(rawValue);
+  if (!loto) return false;
+
+  const hits = kind === "db"
+    ? row?.prediction_hits?.db_numbers
+    : row?.prediction_hits?.loto_numbers;
+
+  return Array.isArray(hits) && hits.includes(loto);
 };
 
 const getHeadTailRows = (result) => {

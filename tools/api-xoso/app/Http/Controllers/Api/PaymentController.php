@@ -16,19 +16,27 @@ class PaymentController extends Controller
     public function plans()
     {
         return response()->json([
-            'vip' => PaymentService::VIP_PLANS,
-            'api' => PaymentService::API_PLANS,
+            'vip' => $this->paymentService->getPlansForType('vip'),
+            'api' => $this->paymentService->getPlansForType('api'),
         ]);
     }
 
     public function store(Request $request)
     {
+        abort_if(!$request->user()->email_verified_at, 403, 'Vui lòng xác nhận email trước khi tạo giao dịch.');
+
         $payload = $request->validate([
             'type' => ['required', 'in:vip,api'],
             'plan_key' => ['required', 'string'],
+            'coupon_code' => ['nullable', 'string', 'max:64'],
         ]);
 
-        $payment = $this->paymentService->create($request->user(), $payload['type'], $payload['plan_key']);
+        $payment = $this->paymentService->create(
+            $request->user(),
+            $payload['type'],
+            $payload['plan_key'],
+            $payload['coupon_code'] ?? null
+        );
 
         $qrPayload = "https://api.vietqr.io/image/970423-0352911113-GLTiEfe.jpg?accountName={$payment->bank_name}&amount={$payment->amount}&addInfo={$payment->transfer_content}";
 
@@ -72,6 +80,22 @@ class PaymentController extends Controller
 
         return response()->json([
             'message' => 'Đã gửi yêu cầu kiểm tra thanh toán. Chúng tôi sẽ xác nhận thanh toán trong vòng gian ngắn nhất.',
+            'payment' => $updated,
+        ]);
+    }
+
+    public function cancel(Payment $payment, Request $request)
+    {
+        abort_if($payment->user_id !== $request->user()->id, 403, 'Bạn không có quyền truy cập giao dịch này.');
+
+        $payload = $request->validate([
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $updated = $this->paymentService->cancel($payment->fresh(), $request->user(), $payload['reason'] ?? null);
+
+        return response()->json([
+            'message' => 'Đã huỷ giao dịch.',
             'payment' => $updated,
         ]);
     }

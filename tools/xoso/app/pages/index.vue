@@ -17,11 +17,14 @@ useHead({
 const stats = ref([]);
 const predictions = ref([]);
 const loading = ref(true);
+const dice = ref(["--", "--", "--"]);
+let diceTimer = null;
 const api = useApi();
 import { useAuthStore } from "~/stores/auth";
 const authStore = useAuthStore();
 onMounted(async () => {
   try {
+    startDice();
     const data = await api.getStats();
     stats.value = data.data;
     const predictionsData = await api.getPredictions();
@@ -30,7 +33,28 @@ onMounted(async () => {
     console.log(e);
   } finally {
     loading.value = false;
+    stopDice();
   }
+});
+
+const startDice = () => {
+  if (diceTimer) return;
+  diceTimer = setInterval(() => {
+    dice.value = Array.from({ length: 3 }, () =>
+      String(Math.floor(Math.random() * 100)).padStart(2, "0")
+    );
+  }, 120);
+};
+
+const stopDice = () => {
+  if (diceTimer) {
+    clearInterval(diceTimer);
+    diceTimer = null;
+  }
+};
+
+onBeforeUnmount(() => {
+  stopDice();
 });
 </script>
 
@@ -66,7 +90,15 @@ onMounted(async () => {
     <section class="max-w-6xl mx-auto py-8 md:py-12 px-4">
       <h2 class="text-2xl font-bold mb-6 text-center">🔥 Số nổi bật hôm nay</h2>
 
-      <div v-if="loading" class="text-center">Loading...</div>
+      <div v-if="loading" class="flex justify-center flex-wrap gap-2">
+        <div
+          v-for="(n, idx) in dice"
+          :key="`dice-${idx}`"
+          class="bg-white text-red-600 px-4 py-3 rounded-lg font-extrabold text-center shadow-sm border border-red-100"
+        >
+          <div class="text-lg tabular-nums tracking-wider">{{ n }}</div>
+        </div>
+      </div>
 
       <div v-else class="flex justify-center flex-wrap gap-2">
         <div
