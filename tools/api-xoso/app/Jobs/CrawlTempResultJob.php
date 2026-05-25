@@ -67,7 +67,6 @@ class CrawlTempResultJob implements ShouldQueue
             }
 
             $prizes = $draw['prizes'];
-            logger()->info('prizes: ', $prizes);
             $isComplete = $this->isCompleteDayData($prizes);
 
             $nextAttempts = (int) $row->attempts + 1;
@@ -163,7 +162,8 @@ class CrawlTempResultJob implements ShouldQueue
     {
         $dmy = Carbon::parse($date)->format('d-m-Y');
 
-        $url = "https://www.minhngoc.net.vn/ket-qua-xo-so/{$dmy}.html?mut={$region}";
+        // $url = "https://www.minhngoc.net.vn/ket-qua-xo-so/{$dmy}.html?mut={$region}";
+        $url = "https://www.minhngoc.net.vn/xo-so-truc-tiep/mien-bac.html";
 
         $html = Http::get($url)->body();
 

@@ -63,18 +63,7 @@ class CrawlResultJob implements ShouldQueue
                     ? Carbon::parse($this->date)->format('Y-m-d')
                     : Carbon::today(config('app.timezone'))->format('Y-m-d');
 
-                Log::debug("Attempting to fetch from primary API", ['region' => $region]);
-                $payload = $this->fetchFromApi($region);
-                Log::debug("Primary API response received", ['payload' => $payload]);
-
-                if (!$this->isValidPayload($payload)) {
-                    Log::warning("API failed → fallback crawling...", [
-                        'region' => $region,
-                        'payload_errors' => $payload['error'] ?? 'no payload'
-                    ]);
-                    $payload = $this->fallbackCrawl($region);
-                    Log::debug("Fallback crawl completed", ['payload' => $payload]);
-                }
+                $payload = $this->fallbackCrawl($region);
 
                 if (empty($payload['data'])) {
                     Log::error("No data received after fallback", ['region' => $region, 'payload' => $payload]);
@@ -284,7 +273,12 @@ class CrawlResultJob implements ShouldQueue
     protected function crawlFromHtml($region)
     {
         $date = Carbon::parse($this->date)->format('d-m-Y');
-        $url = "https://www.minhngoc.net.vn/ket-qua-xo-so/$date.html?mut=$region";
+        $mappings = [
+            Number::REGION_MB => 'mien-bac',
+            Number::REGION_MN => 'mien-nam',
+            Number::REGION_MT => 'mien-trung',
+        ];
+        $url = "https://www.minhngoc.net.vn/ket-qua-xo-so/$mappings[$region]/$date.html";
         Log::debug("Starting HTML crawl", ['url' => $url, 'region' => $region, 'date' => $date]);
 
         $html = Http::get($url)->body();
@@ -514,14 +508,14 @@ class CrawlResultJob implements ShouldQueue
             Log::debug("Database transaction started");
 
             try {
-                $date = Carbon::createFromFormat('Y-m-d', $draw['formatted_date']);
+                $date = Carbon::createFromFormat('Y-m-d', $draw['formatted_date'])->format('Y-m-d');
                 $province = $draw['province'];
                 $provinceCode = $province['code'];
                 $provinceName = $province['name'];
                 $regionCode   = $province['region']['code'];
 
                 Log::debug("Checking for existing result", [
-                    'date' => $date->toDateString(),
+                    'date' => $date,
                     'province_code' => $provinceCode,
                     'region' => $regionCode
                 ]);
@@ -531,7 +525,6 @@ class CrawlResultJob implements ShouldQueue
                     ->where('region', $regionCode)
                     ->latest('id')
                     ->first();
-
                 if ($existing) {
                     if (!$this->forceUpdate) {
                         Log::info("Duplicate skipped", [
@@ -595,10 +588,10 @@ class CrawlResultJob implements ShouldQueue
 
                     Log::debug("Updating prediction hits", [
                         'region' => $regionCode,
-                        'date' => $date->toDateString(),
+                        'date' => $date,
                         'result_id' => $existing->id
                     ]);
-                    $this->updatePredictionHitsForDate($regionCode, $date->toDateString(), $existing->id);
+                    $this->updatePredictionHitsForDate($regionCode, $date, $existing->id);
                     continue;
                 }
 
@@ -638,10 +631,10 @@ class CrawlResultJob implements ShouldQueue
 
                 Log::debug("Updating prediction hits", [
                     'region' => $regionCode,
-                    'date' => $date->toDateString(),
+                    'date' => $date,
                     'result_id' => $result->id
                 ]);
-                $this->updatePredictionHitsForDate($regionCode, $date->toDateString(), $result->id);
+                $this->updatePredictionHitsForDate($regionCode, $date, $result->id);
             } catch (Throwable $e) {
                 DB::rollBack();
                 Log::error("Store failed", [
