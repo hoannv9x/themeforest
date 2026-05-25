@@ -65,7 +65,7 @@ const handleSelectedDate = async (day) => {
 </script>
 
 <template>
-  <div class="p-6 space-y-6">
+  <div class="max-w-6xl mx-auto p-4 space-y-6">
     <MiniGamePrediction />
     <div
       v-if="isVip"

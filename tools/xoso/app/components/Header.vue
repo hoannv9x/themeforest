@@ -49,7 +49,7 @@ watch(
 
 <template>
   <header class="bg-white shadow sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <!-- Logo -->
       <NuxtLink to="/" class="flex items-center gap-2">
         <div class="w-8 h-8 rounded-lg bg-logo-medium md:bg-logo bg-contain bg-center bg-no-repeat"></div>
