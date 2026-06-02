@@ -136,8 +136,20 @@ abstract class ScoreServiceBase
 
   public function rankDb(Collection $stats): Collection
   {
-    return $stats->map(function ($item) {
-      $score = $this->calculateDbRankingScore($item);
+    if ($stats->isEmpty()) return collect();
+
+    $min = (float) $stats->min('total_count_db');
+    $max = (float) $stats->max('total_count_db');
+
+    $minMax = [
+      'db_count' => [
+        'min' => log(1 + max($min, 0)),
+        'max' => log(1 + max($max, 0)),
+      ],
+    ];
+
+    return $stats->map(function ($item) use ($minMax) {
+      $score = $this->calculateDbRankingScore($item, $minMax);
 
       return [
         ...$item->toArray(),
@@ -148,28 +160,30 @@ abstract class ScoreServiceBase
       ->values();
   }
 
-  protected function calculateDbRankingScore($item): float
+  protected function calculateDbRankingScore($item, array $minMax): float
   {
-    // 🔥 gap DB
     $gapRatio = $item->max_gap_db > 0
       ? $item->current_gap_db / $item->max_gap_db
       : 0;
 
     $gapScore = min($gapRatio, 1.3);
 
-    // 📊 mean reversion DB
     $mrScore = $this->calculateMeanReversionDbScore($item);
 
-    // ❄️ cooldown DB
     $cooldown = $item->current_gap_db > 0
       ? min($item->current_gap_db / 15, 1)
       : 0;
 
-    // 🧮 final
+    $freqLog = log(1 + max((float) ($item->total_count_db ?? 0), 0));
+    $freqNorm = ($minMax['db_count']['max'] ?? 0) > ($minMax['db_count']['min'] ?? 0)
+      ? ($freqLog - $minMax['db_count']['min']) / ($minMax['db_count']['max'] - $minMax['db_count']['min'])
+      : 0;
+
     $score =
-      0.5 * $gapScore +
-      0.3 * $mrScore +
-      0.2 * $cooldown;
+      0.4 * $gapScore +
+      0.25 * $mrScore +
+      0.15 * $cooldown +
+      0.2 * min(max($freqNorm, 0), 1);
 
     return $this->applyDbRules($item, $score, $gapRatio);
   }
