@@ -18,6 +18,14 @@
       }
     },
     {
+      "label": "Run queue",
+      "type": "shell",
+      "command": "php artisan queue:work --queue=crawl-result,update-stats,generate-prediction",
+      "options": {
+        "cwd": "${workspaceFolder}/api-xoso"
+      }
+    },
+    {
       "label": "START ALL",
       "dependsOn": [
         "FE",

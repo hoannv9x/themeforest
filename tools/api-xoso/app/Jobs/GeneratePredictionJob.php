@@ -470,49 +470,97 @@ class GeneratePredictionJob implements ShouldQueue
 
     private function buildThreeDigitsPrediction(int $limit, $vipDbTop = []): array
     {
-        $predictions = [];
-        
         if (empty($vipDbTop)) {
             return [];
         }
 
-        $anchor = Carbon::parse($this->predictionDate ?: now()->toDateString());
+        $anchor = Carbon::parse($this->predictionDate ?: now()->toDateString())->startOfDay();
         $cutoff = $anchor->copy()->subDays(180)->toDateString();
+
+        $rows = Number::query()
+            ->join('results', 'results.id', '=', 'numbers.result_id')
+            ->where('results.region', ModelsNumber::REGION_MB)
+            ->where('numbers.prize', 'db')
+            ->whereDate('results.date', '>=', $cutoff)
+            ->orderByDesc('results.date')
+            ->get(['numbers.raw_number', 'results.date']);
+
+        $halfLifeDays = 45.0;
+        $lambda = log(2) / $halfLifeDays;
+
+        $stats = [];
+        foreach ($rows as $r) {
+            $digits = preg_replace('/\D/', '', (string) ($r->raw_number ?? ''));
+            if ($digits === '') {
+                continue;
+            }
+            $last3 = str_pad(substr($digits, -3), 3, '0', STR_PAD_LEFT);
+            if (!preg_match('/^\d{3}$/', $last3)) {
+                continue;
+            }
+
+            $d = Carbon::parse($r->date)->startOfDay();
+            $age = $d->diffInDays($anchor);
+            $w = exp(-$lambda * $age);
+
+            if (!isset($stats[$last3])) {
+                $stats[$last3] = [
+                    'count' => 0,
+                    'wcount' => 0.0,
+                    'last_date' => $d,
+                ];
+            }
+
+            $stats[$last3]['count']++;
+            $stats[$last3]['wcount'] += $w;
+            if ($d->greaterThan($stats[$last3]['last_date'])) {
+                $stats[$last3]['last_date'] = $d;
+            }
+        }
 
         $dbNumbers = collect($vipDbTop)->pluck('number')->filter()->toArray();
 
+        $candidates = [];
         foreach ($dbNumbers as $dbNum) {
-            $dbNumStr = str_pad((string)$dbNum, 2, '0', STR_PAD_LEFT);
-            
+            $dbNumStr = str_pad((string) $dbNum, 2, '0', STR_PAD_LEFT);
             for ($prefix = 0; $prefix <= 9; $prefix++) {
-                $threeDigits = $prefix . $dbNumStr;
-                
-                $rows = Number::query()
-                    ->join('results', 'results.id', '=', 'numbers.result_id')
-                    ->where('results.region', ModelsNumber::REGION_MB)
-                    ->where('numbers.prize', 'db')
-                    ->whereDate('results.date', '>=', $cutoff)
-                    ->whereRaw('RIGHT(LPAD(REPLACE(numbers.raw_number, "[^0-9]", ""), 3, "0"), 3) = ?', [$threeDigits])
-                    ->orderByDesc('results.date')
-                    ->get(['results.date']);
-
-                $freq = $rows->count();
-                $lastDate = $rows->first()?->date;
-                $gapDays = $lastDate ? Carbon::parse($lastDate)->diffInDays($anchor) : 999;
-
-                $freqScore = min($freq / 5, 1);
-                $gapScore = min($gapDays / 30, 1);
-                $score = (0.5 * $freqScore) + (0.5 * $gapScore);
-
-                $predictions[] = [
-                    'number' => $threeDigits,
-                    'score' => round($score, 4),
-                    'confidence' => round($score * 100, 2),
-                    'last_hit_days' => $gapDays,
-                    'freq_180' => $freq,
+                $candidates[] = [
+                    'number' => $prefix . $dbNumStr,
                     'based_on_db' => $dbNumStr,
                 ];
             }
+        }
+
+        $maxW = 0.0;
+        foreach ($candidates as $c) {
+            $w = (float) ($stats[$c['number']]['wcount'] ?? 0.0);
+            if ($w > $maxW) {
+                $maxW = $w;
+            }
+        }
+
+        $predictions = [];
+        foreach ($candidates as $c) {
+            $key = $c['number'];
+            $count = (int) ($stats[$key]['count'] ?? 0);
+            $wcount = (float) ($stats[$key]['wcount'] ?? 0.0);
+            $lastDate = $stats[$key]['last_date'] ?? null;
+
+            $gapDays = $lastDate ? $lastDate->diffInDays($anchor) : 999;
+
+            $freqScore = $maxW > 0 ? min($wcount / $maxW, 1) : 0;
+            $gapScore = min($gapDays / 30, 1);
+            $score = (0.6 * $freqScore) + (0.4 * $gapScore);
+
+            $predictions[] = [
+                'number' => $key,
+                'score' => round($score, 4),
+                'confidence' => round($score * 100, 2),
+                'last_hit_days' => $gapDays,
+                'freq_180' => $count,
+                'freq_w180' => round($wcount, 4),
+                'based_on_db' => $c['based_on_db'],
+            ];
         }
 
         usort($predictions, fn($a, $b) => $b['score'] <=> $a['score']);
