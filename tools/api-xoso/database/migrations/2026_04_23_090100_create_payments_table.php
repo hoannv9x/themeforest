@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->enum('type', ['vip', 'api']);
+            $table->enum('type', ['vip', 'api', 'donate']);
             $table->string('plan_key');
             $table->string('plan_name');
             $table->unsignedInteger('duration_days');

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Number;
 use App\Models\NumberStat;
 use App\Models\Prediction;
+use App\Models\PredictionSnapshot;
 use App\Models\Result;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -14,11 +15,31 @@ class PredictionService
   public function getYesterdayPredictionWithHits($region, $vip = false): array
   {
     $yesterday = Carbon::yesterday()->toDateString();
+    $isVipUser = $vip && Auth::check() && Auth::user()?->isVip();
+
+    // Thử lấy từ snapshot trước
+    $snapshot = PredictionSnapshot::where('date', $yesterday)
+      ->where('region', $region)
+      ->where('is_vip', $isVipUser)
+      ->first();
+
+    if ($snapshot) {
+      $data = $snapshot->content;
+      // Nếu là snapshot từ PredictionService::generateSnapshot, nó sẽ chứa đủ data gộp
+      // Chúng ta cần bổ sung thông tin is_hit cho yesterday
+      return $this->appendHitsToPredictionData($data, $region, $yesterday);
+    }
+
     $predictionBundle = $this->getPredictionProByDate($region, $yesterday, $vip);
+    return $this->appendHitsToPredictionData($predictionBundle, $region, $yesterday);
+  }
+
+  private function appendHitsToPredictionData(array $predictionBundle, string $region, string $date): array
+  {
     $predictions = $predictionBundle['predictions'] ?? [];
 
     $result = Result::where('region', $region)
-      ->whereDate('date', $yesterday)
+      ->whereDate('date', $date)
       ->latest('id')
       ->first();
 
@@ -42,7 +63,6 @@ class PredictionService
 
     $lotoNumbers = collect($predictions['ranking']['numbers'] ?? []);
     $dbNumbers = collect($predictions['db_ranking']['numbers'] ?? []);
-    $bachThuNumbers = collect(data_get($predictions, 'bach_thu.numbers', []));
 
     $lotoWithHit = $lotoNumbers->map(function ($item) use ($allDrawnNumbers) {
       $predicted = str_pad((string) ($item['number'] ?? ''), 2, '0', STR_PAD_LEFT);
@@ -56,18 +76,11 @@ class PredictionService
       return $item;
     })->values();
 
-    $bachThuWithHit = $bachThuNumbers->map(function ($item) use ($allDrawnNumbers) {
-      $predicted = str_pad((string) ($item['number'] ?? ''), 2, '0', STR_PAD_LEFT);
-      $item['is_hit'] = $predicted !== '' && $allDrawnNumbers->contains($predicted);
-      return $item;
-    })->values();
-
     $lotoHits = $lotoWithHit->where('is_hit', true)->pluck('number')->values();
     $dbHits = $dbWithHit->where('is_hit', true)->pluck('number')->values();
-    $bachThuHits = $bachThuWithHit->where('is_hit', true)->pluck('number')->values();
 
     return [
-      'date' => Carbon::parse($yesterday)->format('d-m-Y'),
+      'date' => Carbon::parse($date)->format('d-m-Y'),
       'has_result' => (bool) $result,
       'predictions' => [
         'ranking' => [
@@ -78,24 +91,17 @@ class PredictionService
           ...($predictions['db_ranking'] ?? []),
           'numbers' => $dbWithHit,
         ],
-        'bach_thu' => [
-          ...($predictions['bach_thu'] ?? []),
-          'numbers' => $bachThuWithHit,
-        ],
       ],
       'hits' => [
         'loto' => $lotoHits,
         'db' => $dbHits,
-        'bach_thu' => $bachThuHits,
       ],
       'stats' => [
         'loto_total' => $lotoWithHit->count(),
         'loto_hit_count' => $lotoHits->count(),
         'db_total' => $dbWithHit->count(),
         'db_hit_count' => $dbHits->count(),
-        'bach_thu_total' => $bachThuWithHit->count(),
-        'bach_thu_hit_count' => $bachThuHits->count(),
-        'total_hit_count' => $lotoHits->count() + $dbHits->count() + $bachThuHits->count(),
+        'total_hit_count' => $lotoHits->count() + $dbHits->count(),
       ],
     ];
   }
@@ -271,14 +277,25 @@ class PredictionService
     return $predictions;
   }
 
-  function getPredictionPro($region, $vip = false): array
+  function getPredictionPro($region, $vip = false, $skipCheckAuth = false): array
   {
-    return $this->getPredictionProByDate($region, now()->toDateString(), $vip);
+    return $this->getPredictionProByDate($region, now()->toDateString(), $vip, $skipCheckAuth);
   }
 
-  function getPredictionProByDate($region, $date, $vip = false): array
+  function getPredictionProByDate($region, $date, $vip = false, $skipCheckAuth = false): array
   {
-    $isVipUser = $vip && Auth::check() && Auth::user()?->isVip();
+    $isVipUser = $vip && (!$skipCheckAuth && Auth::check() && Auth::user()?->isVip()) || $vip;
+
+    // Thử lấy từ snapshot trước để tối ưu hiệu năng
+    $snapshot = PredictionSnapshot::where('date', $date)
+      ->where('region', $region)
+      ->where('is_vip', $vip) // Dùng $vip đầu vào thay vì $isVipUser để cache độc lập cho 2 loại
+      ->first();
+
+    if ($snapshot) {
+      return $snapshot->content;
+    }
+
     $yearStart = Carbon::now(config('app.timezone'))->startOfYear();
     if (!$isVipUser && Carbon::parse($date)->lessThan($yearStart)) {
       abort(403, 'Free chỉ xem dự đoán trong năm nay');
@@ -289,7 +306,7 @@ class PredictionService
       : ['ranking', 'db_ranking'];
 
     $fetchAlgos = $isVipUser
-      ? array_values(array_unique(array_merge($heatmapAlgos, ['vip_3_cang', 'vip_bach_thu'])))
+      ? array_values(array_unique(array_merge($heatmapAlgos, ['vip_3_cang'])))
       : $heatmapAlgos;
 
     $predictionRows = Prediction::query()
@@ -344,7 +361,6 @@ class PredictionService
         'db_ranking' => $predictionRows->get('vip_db_ranking')?->toArray(),
         'ranking' => $predictionRows->get('vip_ranking')?->toArray(),
         'three_cang' => $predictionRows->get('vip_3_cang')?->toArray(),
-        'bach_thu' => $predictionRows->get('vip_bach_thu')?->toArray(),
       ];
 
       $lastYearDate = Carbon::parse($date)->subYear()->format('Y-m-d');
@@ -455,13 +471,34 @@ class PredictionService
 
     return $result;
   }
-  
+
+  /**
+   * Tạo snapshot dữ liệu dự đoán để tối ưu tốc độ truy xuất
+   */
+  public function generateSnapshot($region, $date, $vip, $skipCheckAuth = false)
+  {
+    // Tính toán dữ liệu
+    $data = $this->getPredictionProByDate($region, $date, $vip, $skipCheckAuth);
+
+    return PredictionSnapshot::updateOrCreate(
+      [
+        'date' => $date,
+        'region' => $region,
+        'is_vip' => $vip,
+      ],
+      [
+        'content' => $data,
+        'updated_at' => now(),
+      ]
+    );
+  }
+
   private function generateStrategySuggestions($topNumbers, $cycleStats): array
   {
     $suggestions = [];
-    
+
     $avgConfidence = collect($topNumbers)->avg() ?: 0;
-    
+
     if ($avgConfidence > 70) {
       $suggestions[] = [
         'type' => 'strong',
@@ -484,7 +521,7 @@ class PredictionService
         'priority' => 3,
       ];
     }
-    
+
     return $suggestions;
   }
 }

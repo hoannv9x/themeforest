@@ -10,10 +10,10 @@ const isMobileMenuOpen = ref(false);
 
 const vipLink = computed(() => {
   const remaining = authStore.vipStatus?.vip_remaining_days;
-  if (typeof remaining === 'number' && remaining <= 3) {
-    return '/vip';
+  if (typeof remaining === "number" && remaining <= 3) {
+    return "/vip";
   }
-  return authStore.isVip ? '/dashboard' : '/vip';
+  return authStore.isVip ? "/dashboard" : "/vip";
 });
 
 const toggleUserMenu = () => {
@@ -52,7 +52,9 @@ watch(
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <!-- Logo -->
       <NuxtLink to="/" class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-lg bg-logo-medium md:bg-logo bg-contain bg-center bg-no-repeat"></div>
+        <div
+          class="w-8 h-8 rounded-lg bg-logo-medium md:bg-logo bg-contain bg-center bg-no-repeat"
+        ></div>
         <span class="font-bold text-lg">XoSo AI</span>
       </NuxtLink>
 
@@ -61,9 +63,12 @@ watch(
         <NuxtLink to="/">Trang chủ</NuxtLink>
         <NuxtLink to="/dashboard">Dashboard</NuxtLink>
         <NuxtLink to="/results">Kết quả</NuxtLink>
+        <NuxtLink to="/donate" class="text-red-500 font-semibold">🧧 Tán Lộc</NuxtLink>
         <NuxtLink :to="vipLink" class="text-yellow-500 font-semibold"> VIP </NuxtLink>
         <NuxtLink
-          v-if="authStore.user?.permission === 'developer' || authStore.user?.role === 'admin'"
+          v-if="
+            authStore.user?.permission === 'developer' || authStore.user?.role === 'admin'
+          "
           to="/admin"
           class="text-blue-600 font-semibold"
         >
@@ -133,6 +138,13 @@ watch(
                 </p>
               </div>
               <NuxtLink
+                to="/donate"
+                class="block px-3 py-2 hover:bg-gray-100 rounded text-red-600 font-semibold"
+                @click="closeUserMenu"
+              >
+                🧧 Tán Lộc
+              </NuxtLink>
+              <NuxtLink
                 to="/account"
                 class="block px-3 py-2 hover:bg-gray-100 rounded"
                 @click="closeUserMenu"
@@ -175,7 +187,10 @@ watch(
                 Nâng cấp VIP
               </NuxtLink>
               <NuxtLink
-                v-if="authStore.user?.permission === 'developer' || authStore.user?.role === 'admin'"
+                v-if="
+                  authStore.user?.permission === 'developer' ||
+                  authStore.user?.role === 'admin'
+                "
                 to="/admin"
                 class="block px-3 py-2 hover:bg-gray-100 rounded"
                 @click="closeUserMenu"
@@ -199,7 +214,9 @@ watch(
 
     <!-- Mobile menu -->
     <div v-if="isMobileMenuOpen" class="md:hidden px-2 pb-4">
-      <NuxtLink to="/" class="block px-4 py-2" @click="closeMobileMenu">Trang chủ</NuxtLink>
+      <NuxtLink to="/" class="block px-4 py-2" @click="closeMobileMenu"
+        >Trang chủ</NuxtLink
+      >
       <NuxtLink to="/dashboard" class="block px-4 py-2" @click="closeMobileMenu"
         >Thống kê</NuxtLink
       >
@@ -234,19 +251,33 @@ watch(
         @click="closeMobileMenu"
         >Đổi mật khẩu</NuxtLink
       >
-      <NuxtLink :to="vipLink" class="block px-4 py-2 text-yellow-500" @click="closeMobileMenu"
+      <NuxtLink
+        :to="vipLink"
+        class="block px-4 py-2 text-yellow-500"
+        @click="closeMobileMenu"
         >VIP</NuxtLink
       >
       <NuxtLink
-        v-if="authStore.user?.permission === 'developer' || authStore.user?.role === 'admin'"
+        v-if="
+          authStore.user?.permission === 'developer' || authStore.user?.role === 'admin'
+        "
         to="/admin"
         class="block px-4 py-2 text-blue-600 font-semibold"
         @click="closeMobileMenu"
       >
         Admin
       </NuxtLink>
-      <NuxtLink v-if="!authStore.isAuthenticated" to="/login" class="text-sm sm:hidden block px-4 py-2">Đăng nhập</NuxtLink>
-      <NuxtLink v-if="!authStore.isAuthenticated" to="/register" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm sm:hidden block">
+      <NuxtLink
+        v-if="!authStore.isAuthenticated"
+        to="/login"
+        class="text-sm sm:hidden block px-4 py-2"
+        >Đăng nhập</NuxtLink
+      >
+      <NuxtLink
+        v-if="!authStore.isAuthenticated"
+        to="/register"
+        class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm sm:hidden block"
+      >
         Đăng ký (3 ngày VIP miễn phí)
       </NuxtLink>
       <!-- <NuxtLink to="/api-register" class="block py-2 text-blue-600" @click="closeMobileMenu">API</NuxtLink> -->

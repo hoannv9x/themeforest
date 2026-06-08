@@ -18,6 +18,22 @@
       }
     },
     {
+      "label": "api study",
+      "type": "shell",
+      "command": "php artisan serve --port=8888",
+      "options": {
+        "cwd": "${workspaceFolder}/study/api-study"
+      }
+    },
+    {
+      "label": "FE study",
+      "type": "shell",
+      "command": "npm run dev -- --port=3008",
+      "options": {
+        "cwd": "${workspaceFolder}/study/fe"
+      }
+    },
+    {
       "label": "Run queue",
       "type": "shell",
       "command": "php artisan queue:work --queue=crawl-result,update-stats,generate-prediction",
@@ -30,6 +46,14 @@
       "dependsOn": [
         "FE",
         "BE"
+      ],
+      "dependsOrder": "parallel"
+    },
+    {
+      "label": "START ALL study",
+      "dependsOn": [
+        "FE study",
+        "api study"
       ],
       "dependsOrder": "parallel"
     }

@@ -65,7 +65,7 @@ class ResultService
     $predictionRows = Prediction::query()
       ->whereIn('region', $regions)
       ->whereIn('date', $dates)
-      ->whereIn('algorithm', ['ranking', 'db_ranking'])
+      ->whereIn('algorithm', ['ranking', 'db_ranking', 'vip_ranking', 'vip_db_ranking'])
       ->get(['region', 'date', 'algorithm', 'numbers'])
       ->groupBy(fn($p) => $p->region . '|' . Carbon::parse($p->date)->format('Y-m-d'));
 
@@ -75,6 +75,8 @@ class ResultService
 
       $ranking = optional($rows->firstWhere('algorithm', 'ranking'))->numbers ?? [];
       $dbRanking = optional($rows->firstWhere('algorithm', 'db_ranking'))->numbers ?? [];
+      $vipRanking = optional($rows->firstWhere('algorithm', 'vip_ranking'))->numbers ?? [];
+      $vipDbRanking = optional($rows->firstWhere('algorithm', 'vip_db_ranking'))->numbers ?? [];
 
       $predLoto = collect($ranking)
         ->map(fn($i) => $this->normalizeTwoDigits($i['number'] ?? null))
@@ -83,6 +85,18 @@ class ResultService
         ->values()
         ->all();
       $predDb = collect($dbRanking)
+        ->map(fn($i) => $this->normalizeTwoDigits($i['number'] ?? null))
+        ->filter()
+        ->unique()
+        ->values()
+        ->all();
+      $vipPredLoto = collect($vipRanking)
+        ->map(fn($i) => $this->normalizeTwoDigits($i['number'] ?? null))
+        ->filter()
+        ->unique()
+        ->values()
+        ->all();
+      $vipPredDb = collect($vipDbRanking)
         ->map(fn($i) => $this->normalizeTwoDigits($i['number'] ?? null))
         ->filter()
         ->unique()
@@ -103,13 +117,32 @@ class ResultService
         ->values()
         ->all();
 
+      // Highlight VIP hits directly on raw_data
+      $rawData = $result->raw_data;
+      if (is_array($rawData)) {
+        foreach ($rawData as $prizeKey => &$prizeNumbers) {
+          if (!is_array($prizeNumbers)) continue;
+          foreach ($prizeNumbers as &$numObj) {
+            if (!isset($numObj['number'])) continue;
+            $normalized = $this->normalizeTwoDigits($numObj['number']);
+            $isDb = $prizeKey === 'db';
+            $numObj['is_vip_hit'] = ($isDb && in_array($normalized, $vipPredDb)) || (!$isDb && in_array($normalized, $vipPredLoto));
+          }
+        }
+        $result->raw_data = $rawData;
+      }
+
       $result->setAttribute('prediction', [
         'loto_numbers' => $predLoto,
         'db_numbers' => $predDb,
+        'vip_loto_numbers' => $vipPredLoto,
+        'vip_db_numbers' => $vipPredDb,
       ]);
       $result->setAttribute('prediction_hits', [
         'loto_numbers' => array_values(array_intersect($predLoto, $allDrawn)),
         'db_numbers' => array_values(array_intersect($predDb, $dbDrawn)),
+        'vip_loto_numbers' => array_values(array_intersect($vipPredLoto, $allDrawn)),
+        'vip_db_numbers' => array_values(array_intersect($vipPredDb, $dbDrawn)),
       ]);
 
       $result->unsetRelation('numbers');
@@ -140,11 +173,13 @@ class ResultService
     $rows = Prediction::query()
       ->where('region', $result->region)
       ->whereDate('date', Carbon::parse($date)->format('Y-m-d'))
-      ->whereIn('algorithm', ['ranking', 'db_ranking'])
+      ->whereIn('algorithm', ['ranking', 'db_ranking', 'vip_ranking', 'vip_db_ranking'])
       ->get(['algorithm', 'numbers']);
 
     $ranking = optional($rows->firstWhere('algorithm', 'ranking'))->numbers ?? [];
     $dbRanking = optional($rows->firstWhere('algorithm', 'db_ranking'))->numbers ?? [];
+    $vipRanking = optional($rows->firstWhere('algorithm', 'vip_ranking'))->numbers ?? [];
+    $vipDbRanking = optional($rows->firstWhere('algorithm', 'vip_db_ranking'))->numbers ?? [];
 
     $predLoto = collect($ranking)
       ->map(fn($i) => $this->normalizeTwoDigits($i['number'] ?? null))
@@ -153,6 +188,18 @@ class ResultService
       ->values()
       ->all();
     $predDb = collect($dbRanking)
+      ->map(fn($i) => $this->normalizeTwoDigits($i['number'] ?? null))
+      ->filter()
+      ->unique()
+      ->values()
+      ->all();
+    $vipPredLoto = collect($vipRanking)
+      ->map(fn($i) => $this->normalizeTwoDigits($i['number'] ?? null))
+      ->filter()
+      ->unique()
+      ->values()
+      ->all();
+    $vipPredDb = collect($vipDbRanking)
       ->map(fn($i) => $this->normalizeTwoDigits($i['number'] ?? null))
       ->filter()
       ->unique()
@@ -173,20 +220,37 @@ class ResultService
       ->values()
       ->all();
 
+    $rawData = $result->raw_data;
+    if (is_array($rawData)) {
+      foreach ($rawData as $prizeKey => &$prizeNumbers) {
+        if (!is_array($prizeNumbers)) continue;
+        foreach ($prizeNumbers as &$numObj) {
+          if (!isset($numObj['number'])) continue;
+          $normalized = $this->normalizeTwoDigits($numObj['number']);
+          $isDb = $prizeKey === 'db';
+          $numObj['is_vip_hit'] = ($isDb && in_array($normalized, $vipPredDb)) || (!$isDb && in_array($normalized, $vipPredLoto));
+        }
+      }
+    }
+
     return response()->json([
       'result' => [
         'date' => $result->date?->format('Y-m-d'),
         'region' => $result->region,
         'province_code' => $result->province_code,
-        'raw_data' => $result->raw_data,
+        'raw_data' => $rawData,
       ],
       'prediction' => [
         'loto_numbers' => $predLoto,
         'db_numbers' => $predDb,
+        'vip_loto_numbers' => $vipPredLoto,
+        'vip_db_numbers' => $vipPredDb,
       ],
       'prediction_hits' => [
         'loto_numbers' => array_values(array_intersect($predLoto, $allDrawn)),
         'db_numbers' => array_values(array_intersect($predDb, $dbDrawn)),
+        'vip_loto_numbers' => array_values(array_intersect($vipPredLoto, $allDrawn)),
+        'vip_db_numbers' => array_values(array_intersect($vipPredDb, $dbDrawn)),
       ],
     ]);
   }

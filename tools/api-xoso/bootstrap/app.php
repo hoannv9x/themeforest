@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->job(new SeedMiniGamePredictionsJob(30, Carbon::today(config('app.timezone'))->format('Y-m-d')))->at('08:00');
         $schedule->job(new FinalizeMiniGameDailyJob(Carbon::today(config('app.timezone'))->format('Y-m-d')))->at('17:00');
         $schedule->job(new EvaluateMiniGameWeeklyJob())->weeklyOn(1, '20:00');
+        $schedule->command('app:generate-prediction-snapshots')->at('20:00');
         // $schedule->command('pulse:check')->everyMinute();
     })
     ->withMiddleware(function (Middleware $middleware) {
