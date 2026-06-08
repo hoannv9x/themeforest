@@ -44,18 +44,13 @@ class GeneratePredictionJob implements ShouldQueue
         }
 
         // Determine the prediction date based on current hour
-        if ($hour < 17) {
-            $date = $now->toDateString();
-        } else {
-            // $hour >= 19
-            $date = $now->copy()->addDay()->toDateString();
-        }
-        $this->predictionDate = $date;
-
         $result = Result::query()->latest('id')->first();
         if (!$result || !$result->date) {
             return;
         }
+        $date = Carbon::parse($result->date)->addDay()->toDateString();
+        $this->predictionDate = $date;
+
         $fullStats = NumberStat::where('region', ModelsNumber::REGION_MB)->get();
         $yearStats = $this->buildYearScopedStats(ModelsNumber::REGION_MB, $date);
 
