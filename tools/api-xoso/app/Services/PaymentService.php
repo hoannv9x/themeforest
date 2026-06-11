@@ -35,8 +35,27 @@ class PaymentService
         return $out;
     }
 
-    public function create(User $user, string $type, string $planKey, ?string $couponCode = null): Payment
+    public function create(User $user, string $type, string $planKey, ?string $couponCode = null, ?int $amount = null): Payment
     {
+        if ($type === 'donate') {
+            return Payment::create([
+                'user_id' => $user->id,
+                'type' => $type,
+                'plan_key' => 'donation',
+                'plan_name' => 'Tán Lộc',
+                'duration_days' => 0,
+                'amount' => $amount,
+                'transfer_content' => $this->buildTransferContent($user->id, $type),
+                'bank_account_name' => config('services.payment.bank_account_name'),
+                'bank_account_number' => config('services.payment.bank_account_number'),
+                'bank_name' => config('services.payment.bank_name'),
+                'status' => 'pending',
+                'meta' => [
+                    'amount_final' => $amount,
+                ],
+            ]);
+        }
+
         $plan = PaymentPlan::query()
             ->where('type', $type)
             ->where('plan_key', $planKey)
@@ -161,7 +180,11 @@ class PaymentService
 
     private function buildTransferContent(int $userId, string $type): string
     {
-        $prefix = $type === 'api' ? 'API' : 'VIP';
+        $prefix = match ($type) {
+            'api' => 'API',
+            'donate' => 'LOC',
+            default => 'VIP',
+        };
         return sprintf('XOSO-%s-%d-%s', $prefix, $userId, Str::upper(Str::random(6)));
     }
 
@@ -169,6 +192,11 @@ class PaymentService
     {
         $user = $payment->user;
         $now = Carbon::now();
+
+        if ($payment->type === 'donate') {
+            // Tán lộc không cấp quyền gì thêm, chỉ ghi nhận
+            return;
+        }
 
         if ($payment->type === 'vip') {
             $currentExpiredAt = $user->vip_expired_at;

@@ -26,16 +26,18 @@ class PaymentController extends Controller
         abort_if(!$request->user()->email_verified_at, 403, 'Vui lòng xác nhận email trước khi tạo giao dịch.');
 
         $payload = $request->validate([
-            'type' => ['required', 'in:vip,api'],
-            'plan_key' => ['required', 'string'],
+            'type' => ['required', 'in:vip,api,donate'],
+            'plan_key' => ['required_unless:type,donate', 'string'],
+            'amount' => ['required_if:type,donate', 'integer', 'min:1000'],
             'coupon_code' => ['nullable', 'string', 'max:64'],
         ]);
 
         $payment = $this->paymentService->create(
             $request->user(),
             $payload['type'],
-            $payload['plan_key'],
-            $payload['coupon_code'] ?? null
+            $payload['plan_key'] ?? 'donation',
+            $payload['coupon_code'] ?? null,
+            $payload['amount'] ?? null
         );
 
         $qrPayload = "https://api.vietqr.io/image/970423-0352911113-GLTiEfe.jpg?accountName={$payment->bank_name}&amount={$payment->amount}&addInfo={$payment->transfer_content}";

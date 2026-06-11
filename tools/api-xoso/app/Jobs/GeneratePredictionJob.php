@@ -10,6 +10,7 @@ use App\Models\Result;
 use App\Services\ExplainService;
 use App\Services\ScoreService;
 use App\Services\ScoreServiceVip;
+use App\Services\PredictionService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -33,7 +34,7 @@ class GeneratePredictionJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(ScoreService $service, ScoreServiceVip $vipService, ExplainService $explainService)
+    public function handle(ScoreService $service, ScoreServiceVip $vipService, ExplainService $explainService, PredictionService $predictionService)
     {
         $now = now();
         $hour = (int) $now->format('H');
@@ -118,9 +119,6 @@ class GeneratePredictionJob implements ShouldQueue
         $explainsDb = $vipDbTop->map(fn($item) => $explainService->explainDb((object) $item));
 
         $vipThreeDigits = $this->buildThreeDigitsPrediction(3, $vipDbTop);
-        $vipBachThu = $vipTop->first()
-            ? collect([$explainService->explainLoto((object) $vipTop->first())])
-            : collect();
 
         $algorithms = [
             'ranking' => $freeTop->values(),
@@ -128,7 +126,6 @@ class GeneratePredictionJob implements ShouldQueue
             'vip_db_ranking' => $explainsDb,
             'db_ranking' => $freeDbTop->values(),
             'vip_3_cang' => $vipThreeDigits,
-            'vip_bach_thu' => $vipBachThu->values(),
         ];
 
         foreach ($algorithms as $code => $data) {
@@ -145,6 +142,10 @@ class GeneratePredictionJob implements ShouldQueue
                 ]
             );
         }
+
+        // Tự động tạo snapshot ngay sau khi generate xong
+        $predictionService->generateSnapshot(ModelsNumber::REGION_MB, $date, false, true);
+        $predictionService->generateSnapshot(ModelsNumber::REGION_MB, $date, true, true);
     }
 
     private function buildYearScopedStats(string $region, string $asOfDate): Collection

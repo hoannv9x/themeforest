@@ -2,11 +2,11 @@
 const url = useRequestURL();
 const canonical = url.origin + url.pathname;
 useSeoMeta({
-  title: 'Dashboard',
+  title: "Dashboard",
 });
 useHead({
-  link: [{ rel: 'canonical', href: canonical }],
-  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+  link: [{ rel: "canonical", href: canonical }],
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
 import { useAuthStore } from "~/stores/auth";
@@ -32,7 +32,9 @@ onMounted(async () => {
   const data = await statsFn({ region: "mb" });
   stats.value = data.data || [];
 
-  const mostFn = authStore.isVip ? api.getVipMostFrequentNumbers : api.getMostFrequentNumbers;
+  const mostFn = authStore.isVip
+    ? api.getVipMostFrequentNumbers
+    : api.getMostFrequentNumbers;
   const numberData = await mostFn(paramNumberMost.value);
   numbersMost.value = numberData.data;
 
@@ -40,7 +42,9 @@ onMounted(async () => {
   const predictionsData = await predictionsFn();
   predictions.value = predictionsData.data;
 
-  const yesterdayFn = authStore.isVip ? api.getVipYesterdayPredictions : api.getYesterdayPredictions;
+  const yesterdayFn = authStore.isVip
+    ? api.getVipYesterdayPredictions
+    : api.getYesterdayPredictions;
   const yesterdayPredictionsData = await yesterdayFn();
   yesterdayPredictions.value = yesterdayPredictionsData.data;
 });
@@ -58,7 +62,9 @@ const isNearExpired = computed(() => {
 
 const handleSelectedDate = async (day) => {
   paramNumberMost.value.day = day;
-  const mostFn = authStore.isVip ? api.getVipMostFrequentNumbers : api.getMostFrequentNumbers;
+  const mostFn = authStore.isVip
+    ? api.getVipMostFrequentNumbers
+    : api.getMostFrequentNumbers;
   const numberData = await mostFn(paramNumberMost.value);
   numbersMost.value = numberData.data;
 };
@@ -103,10 +109,7 @@ const handleSelectedDate = async (day) => {
         :data="yesterdayPredictions"
       />
 
-      <div
-        v-if="predictions?.is_vip && predictions?.heatmap"
-        class="mt-6 space-y-4"
-      >
+      <div v-if="predictions?.is_vip && predictions?.heatmap" class="mt-6 space-y-4">
         <h3 class="text-lg font-bold">🔥 Heatmap số (VIP)</h3>
         <div class="grid grid-cols-10 gap-2 max-sm:grid-cols-5">
           <div
@@ -158,7 +161,14 @@ const handleSelectedDate = async (day) => {
                 <div class="text-xs text-gray-700 space-y-1">
                   <div>Tổng số lần về: {{ item.total_count }}</div>
                   <div>Gan: {{ item.current_gap }}/{{ item.max_gap }}</div>
-                  <div v-if="item.was_hit_same_day_last_year" class="text-blue-700 font-semibold">
+                  <div>
+                    Về gần nhất:
+                    {{ item.last_hit_date ? formatDate(item.last_hit_date) : "--" }}
+                  </div>
+                  <div
+                    v-if="item.was_hit_same_day_last_year"
+                    class="text-blue-700 font-semibold"
+                  >
                     Đã về đúng ngày này của năm trước
                   </div>
                 </div>
@@ -179,7 +189,7 @@ const handleSelectedDate = async (day) => {
       <ChartFrequency :data="numbersMost" @selectedDate="handleSelectedDate" />
     </div>
 
-    <NumberGrid :data="stats" />
+    <NumberGrid :data="stats" v-if="!isVip" />
     <CTA />
   </div>
 </template>
