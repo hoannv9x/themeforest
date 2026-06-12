@@ -16,7 +16,12 @@
       <a href="#" class="logo">
         <img src="./images/logo.png" alt="logo" width="118">
       </a>
-      <ul class="nav-links">
+      <div class="hamburger" id="hamburger">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <ul class="nav-links" id="navLinks">
         <li><a href="#story">Câu chuyện</a></li>
         <li><a href="#day">Ngày ở Trạm</a></li>
         <li><a href="#space">Không gian</a></li>
@@ -138,8 +143,7 @@
       <div class="menu-section fade-up">
         <div class="menu-layout">
           <div class="menu-image-wrapper">
-            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800&auto=format&fit=crop"
-              alt="Cà phê nóng" class="menu-image">
+            <img src="./images/menu_1.webp" alt="Cà phê nóng" class="menu-image">
           </div>
           <div class="menu-content">
             <div class="menu-category">
@@ -226,8 +230,7 @@
             </div>
           </div>
           <div class="menu-image-wrapper">
-            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&auto=format&fit=crop"
-              alt="Cà phê phin" class="menu-image">
+            <img src="./images/menu_2.webp" alt="Cà phê phin" class="menu-image">
           </div>
         </div>
       </div>
@@ -288,7 +291,7 @@
               </div>
             </div>
           </div>
-          <div class="menu-column">
+          <div class="menu-column md-order-3">
             <div class="menu-category">
               <h4 class="menu-category-title">Trạm ngọt ngào</h4>
               <div class="menu-item">
@@ -337,15 +340,19 @@
               </div>
             </div>
           </div>
+          <div class="menu-column collapse-2">
+            <div class="menu-image-wrapper">
+              <img src="./images/menu_3.webp" alt="Cà phê phin" class="menu-image">
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Đá Xay & Trà -->
+      <!-- Đá Xay,  -->
       <div class="menu-section fade-up">
         <div class="menu-layout">
           <div class="menu-image-wrapper">
-            <img src="https://images.unsplash.com/photo-1461023058943-07055d826f8f?w=800&auto=format&fit=crop"
-              alt="Đá xay" class="menu-image">
+            <img src="./images/da_xay.webp" alt="Đá xay & Trà" class="menu-image">
           </div>
           <div class="menu-content">
             <div class="menu-category">
@@ -363,32 +370,70 @@
                 <span class="menu-item-price">35.000đ</span>
               </div>
             </div>
-            <div class="menu-category">
-              <h4 class="menu-category-title">Trà</h4>
-              <div class="menu-item">
-                <span>
-                  <span class="menu-item-name">Trà Ôlong Hoa Quả Nhiệt Đới</span>
-                </span>
-                <span class="menu-item-price">35.000đ</span>
-              </div>
-              <div class="menu-item">
-                <span>
-                  <span class="menu-item-name">Trà Ôlong Hoa Atiso Đào</span>
-                </span>
-                <span class="menu-item-price">35.000đ</span>
-              </div>
-              <div class="menu-item">
-                <span>
-                  <span class="menu-item-name">Trà Ôlong Dâu Tằm Ngọc Trai</span>
-                </span>
-                <span class="menu-item-price">30.000đ</span>
-              </div>
-              <div class="menu-item">
-                <span>
-                  <span class="menu-item-name">Trà Tắc Mật Ong Nha Đam</span>
-                </span>
-                <span class="menu-item-price">25.000đ</span>
-              </div>
+          </div>
+        </div>
+      </div>
+      <!-- Trà & Trà Ấm -->
+      <div class="menu-section fade-up">
+        <div class="menu-grid">
+          <div class="menu-category">
+            <h4 class="menu-category-title">Trà</h4>
+            <div class="menu-item">
+              <span>
+                <span class="menu-item-name">Trà Ôlong Hoa Quả Nhiệt Đới</span>
+              </span>
+              <span class="menu-item-price">35.000đ</span>
+            </div>
+            <div class="menu-item">
+              <span>
+                <span class="menu-item-name">Trà Ôlong Hoa Atiso Đào</span>
+              </span>
+              <span class="menu-item-price">35.000đ</span>
+            </div>
+            <div class="menu-item">
+              <span>
+                <span class="menu-item-name">Trà Ôlong Dâu Tằm Ngọc Trai</span>
+              </span>
+              <span class="menu-item-price">30.000đ</span>
+            </div>
+            <div class="menu-item">
+              <span>
+                <span class="menu-item-name">Trà Tắc Mật Ong Nha Đam</span>
+              </span>
+              <span class="menu-item-price">25.000đ</span>
+            </div>
+          </div>
+          <div class="menu-category">
+            <h4 class="menu-category-title">Trà ấm</h4>
+            <div class="menu-item">
+              <span>
+                <span class="menu-item-name">Trà Hoa Cúc Hoàng Kim</span>
+              </span>
+              <span class="menu-item-price">55.000đ</span>
+            </div>
+            <div class="menu-item">
+              <span>
+                <span class="menu-item-name">Trà Cam Quế Bá Tước</span>
+              </span>
+              <span class="menu-item-price">45.000đ</span>
+            </div>
+            <div class="menu-item">
+              <span>
+                <span class="menu-item-name">Trà 7 Vị Thảo Mộc</span>
+              </span>
+              <span class="menu-item-price">45.000đ</span>
+            </div>
+            <div class="menu-item">
+              <span>
+                <span class="menu-item-name">Trà Dâu Tằm Lục Vị</span>
+              </span>
+              <span class="menu-item-price">45.000đ</span>
+            </div>
+            <div class="menu-item">
+              <span>
+                <span class="menu-item-name">Trà Mạn</span>
+              </span>
+              <span class="menu-item-price">25.000đ</span>
             </div>
           </div>
         </div>
@@ -465,7 +510,7 @@
         </div>
       </div>
 
-      <!-- Trạm Sum Vầy Ngày Đông & Trạm Nhâm Nhi -->
+      <!-- Trạm Sum Vầy Ngày Đông -->
       <div class="menu-section fade-up">
         <div class="menu-layout reverse">
           <div class="menu-content">
@@ -488,15 +533,18 @@
             </div>
           </div>
           <div class="menu-image-wrapper">
-            <img src="./images/nham_nhi_1.webp" alt="Trà nóng" class="menu-image">
+            <img src="./images/menu_3.webp" alt="Cà phê phin" class="menu-image">
           </div>
         </div>
       </div>
 
-      <!-- Đồ Ăn Nhẹ & Trà Ấm -->
+      <!-- Đồ Ăn Nhẹ -->
       <div class="menu-section fade-up">
-        <div class="menu-grid">
-          <div class="menu-column">
+        <div class="menu-layout">
+          <div class="menu-image-wrapper">
+            <img src="./images/menu_4.webp" alt="Trạm nhâm nhi" class="menu-image">
+          </div>
+          <div class="menu-content">
             <div class="menu-category">
               <h4 class="menu-category-title">Trạm nhâm nhi</h4>
               <div class="menu-item">
@@ -549,38 +597,47 @@
               </div>
             </div>
           </div>
-          <div class="menu-column">
-            <div class="menu-category">
-              <h4 class="menu-category-title">Trà ấm</h4>
-              <div class="menu-item">
-                <span>
-                  <span class="menu-item-name">Trà Hoa Cúc Hoàng Kim</span>
-                </span>
-                <span class="menu-item-price">55.000đ</span>
+        </div>
+      </div>
+
+      <!-- Đồ ăn -->
+      <div class="menu-section fade-up">
+        <div>
+          <h4 class="menu-category-title text-center">Trạm Combo</h4>
+          <div class="combo-grid">
+            <div class="combo-card">
+              <div class="combo-image-wrapper">
+                <img src="./images/nham_nhi_3.webp" alt="Set Cá quả nướng muối" class="combo-image">
+                <div class="combo-price-tag">200.000đ/người</div>
               </div>
-              <div class="menu-item">
-                <span>
-                  <span class="menu-item-name">Trà Cam Quế Bá Tước</span>
-                </span>
-                <span class="menu-item-price">45.000đ</span>
+              <div class="combo-content">
+                <h5 class="combo-name">Set Cá quả nướng muối</h5>
+                <ul class="combo-desc-list">
+                  <li>Cá quả ủ muối nướng than hoa</li>
+                  <li>Chân giò giả cầy</li>
+                  <li>Rau củ quả luộc</li>
+                  <li>Nem nắm Phụng Châu</li>
+                  <li>Ốc đồng xào xả ớt</li>
+                  <li>Khoai lang nướng</li>
+                </ul>
               </div>
-              <div class="menu-item">
-                <span>
-                  <span class="menu-item-name">Trà 7 Vị Thảo Mộc</span>
-                </span>
-                <span class="menu-item-price">45.000đ</span>
+            </div>
+            <div class="combo-card">
+              <div class="combo-image-wrapper">
+                <img src="./images/nham_nhi_4.webp" alt="Set gà đồng nướng than hoa" class="combo-image">
+                <div class="combo-price-tag">200.000đ/người</div>
               </div>
-              <div class="menu-item">
-                <span>
-                  <span class="menu-item-name">Trà Dâu Tằm Lục Vị</span>
-                </span>
-                <span class="menu-item-price">45.000đ</span>
-              </div>
-              <div class="menu-item">
-                <span>
-                  <span class="menu-item-name">Trà Mạn</span>
-                </span>
-                <span class="menu-item-price">25.000đ</span>
+              <div class="combo-content">
+                <h5 class="combo-name">Set gà đồng nướng than hoa</h5>
+                <ul class="combo-desc-list">
+                  <li>Gà đồng nướng than hoa</li>
+                  <li>Thịt lợn hấp riềng gừng</li>
+                  <li>Lòng mề xào giá</li>
+                  <li>Xôi đỗ</li>
+                  <li>Salad rau củ</li>
+                  <li>Nem nắm Phụng Châu</li>
+                  <li>Khoai tây chiên</li>
+                </ul>
               </div>
             </div>
           </div>
@@ -623,22 +680,30 @@
       </div>
       <div class="location-content fade-up">
         <div class="location-map">
-          <iframe
+          <!-- <iframe
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d125343.80492233703!2d105.74456860625!3d20.980104850000002!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3135acc6bdc63e19%3A0xe139d68e09966d5!2zSMOgIE5vw6IsIFZpZXRuYW0!5e0!3m2!1sen!2s!4v1718160000000!5m2!1sen!2s"
+            allowfullscreen="" loading="lazy"></iframe> -->
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3726.047615213718!2d105.6927843!3d20.9506029!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3134530c4d2a255f%3A0x1298511c080d0bcb!2zVHLhuqFtIEPhuqNtIFjDumMgQ2FmZSBSdeG7mW5n!5e0!3m2!1sen!2s!4v1781234526462!5m2!1sen!2s"
             allowfullscreen="" loading="lazy"></iframe>
         </div>
         <div class="location-details">
           <div class="location-detail-item">
             <h4>Địa chỉ</h4>
-            <p>Đường đến Trạm, Thôn An Khánh, Huyện Đông Anh, Hà Nội</p>
+            <p>Xóm 4 Phương Bản, Phường, Chương Mỹ, Hà Nội 13400, Vietnam</p>
           </div>
           <div class="location-detail-item">
             <h4>Giờ mở cửa</h4>
-            <p>Thứ 2 - Chủ nhật<br>07:30 - 20:00</p>
+            <p>Thứ 2 - Chủ nhật<br>8 AM–10:30 PM</p>
           </div>
           <div class="location-detail-item">
             <h4>Liên hệ</h4>
-            <p>+84 912 345 678<br>hello@tram.vn</p>
+            <p class="nav-links">
+              <a href="tel:0979190000">097-919-0000</a>
+            </p>
+            <p class="nav-links">
+              <a href="https://www.facebook.com/Tramcamxuccaferuong">Facebook</a>
+            </p>
           </div>
         </div>
       </div>
